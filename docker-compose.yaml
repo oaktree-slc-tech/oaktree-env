@@ -1,0 +1,47 @@
+version: "2.1"
+services:
+
+  jupyter:
+    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark-k8s-kafka:2019-1213
+    volumes:
+    - ./.local:/home/jovyan/
+    - ./local:/home/jovyan/work/
+    environment:
+      OBJECTS_ENDPOINT: "http://object-storage:9000"
+      OBJECTS_CONTAINER: opioids
+      OBJECTS_SECRET: "jupyter@analytics"
+      OBJECTS_ACCESSID: "jupyter"
+    command: ["jupyter", "lab", "--ip", "0.0.0.0"]
+    ports:
+    - 8888:8888
+
+  object-storage:
+    image: minio/minio
+    volumes:
+    - ./data:/data
+    environment:
+      MINIO_ACCESS_KEY: "jupyter"
+      MINIO_SECRET_KEY: "jupyter@analytics"
+    command:
+    - server
+    - /data
+    ports:
+    - 9000:9000
+
+  zookeeper:
+    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/zookeeper
+    restart: always
+    ports:
+      - 2181:2181
+
+  kafka:
+    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/kafka
+    restart: always
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "TestTopic-a:1:1,TestTopic-b:1:1,"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
