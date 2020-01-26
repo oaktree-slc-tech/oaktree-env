@@ -2,13 +2,13 @@ version: "2.1"
 services:
 
   jupyter:
-    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark-k8s-kafka:2019-1213
+    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark-k8s-kafka:2020-0125
     volumes:
     - ./.local:/home/jovyan/
     - ./local:/home/jovyan/work/
     environment:
       OBJECTS_ENDPOINT: "http://object-storage:9000"
-      OBJECTS_CONTAINER: opioids
+      OBJECTS_CONTAINER: web-age
       OBJECTS_SECRET: "jupyter@analytics"
       OBJECTS_ACCESSID: "jupyter"
     command: ["jupyter", "lab", "--ip", "0.0.0.0"]
