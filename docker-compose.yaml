@@ -14,6 +14,7 @@ services:
     command: ["jupyter", "lab", "--ip", "0.0.0.0"]
     ports:
     - 8888:8888
+    - 4040:4040
 
   object-storage:
     image: minio/minio
