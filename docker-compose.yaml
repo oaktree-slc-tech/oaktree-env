@@ -2,7 +2,7 @@ version: "2.1"
 services:
 
   jupyter:
-    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark245-k8s-beakerx
+    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark245-k8s-beakerx:2020-0310
     volumes:
     - ./.local:/home/jovyan/
     - ./local:/home/jovyan/work/
