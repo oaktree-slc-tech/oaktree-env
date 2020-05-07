@@ -16,6 +16,18 @@ services:
     - 8888:8888
     - 4040:4040
 
+  db:
+    image: postgres:11
+    volumes:
+    - ./data/postgres/data:/var/lib/postgresql/data/pgdata
+    environment:
+      POSTGRES_PASSWORD: images-meta@medical-db
+      POSTGRES_USER: postgres
+      POSTGRES_DB: images
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+    - 65432:5432
+
   object-storage:
     image: minio/minio
     volumes:
@@ -36,6 +48,9 @@ services:
     - 8042:8042
     volumes:
     - ./config/orthanc/config.json:/etc/orthanc/orthanc.json:ro
+    environment:
+      POSTGRESQL_PLUGIN_ENABLED: "true"
+      PYTHON_PLUGIN_ENABLED: "true"
 
   zookeeper:
     image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/zookeeper
