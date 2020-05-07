@@ -1,3 +1,5 @@
 .ipynb_checkpoints
 .minio.sys
 .local
+data/minio/images
+data/minio/playground

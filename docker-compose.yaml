@@ -2,13 +2,13 @@ version: "2.1"
 services:
 
   jupyter:
-    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark245-k8s-beakerx:2020-0310
+    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/spark245-k8s-lm 
     volumes:
     - ./.local:/home/jovyan/
     - ./local:/home/jovyan/work/
     environment:
       OBJECTS_ENDPOINT: "http://object-storage:9000"
-      OBJECTS_CONTAINER: web-age
+      OBJECTS_CONTAINER: playground 
       OBJECTS_SECRET: "jupyter@analytics"
       OBJECTS_ACCESSID: "jupyter"
     command: ["jupyter", "lab", "--ip", "0.0.0.0"]
@@ -19,7 +19,7 @@ services:
   object-storage:
     image: minio/minio
     volumes:
-    - ./data:/data
+    - ./data/minio:/data
     environment:
       MINIO_ACCESS_KEY: "jupyter"
       MINIO_SECRET_KEY: "jupyter@analytics"
@@ -28,6 +28,14 @@ services:
     - /data
     ports:
     - 9000:9000
+
+  orthanc:
+    image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/orthanc-s3
+    ports:
+    - 4242:4242
+    - 8042:8042
+    volumes:
+    - ./config/orthanc/config.json:/etc/orthanc/orthanc.json:ro
 
   zookeeper:
     image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/zookeeper
