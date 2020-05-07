@@ -12,5 +12,15 @@
     "s3_endpoint": "http://object-storage:9000",
     "s3_bucket": "images",
     "implementation": "transfer_manager"
+  },
+  "PostgreSQL": {
+    "EnableIndex": true,
+    "EnableStorage": false,
+    "Host": "db",
+    "Port": 5432,
+    "Database": "images",
+    "Username": "postgres",
+    "Password": "images-meta@medical-db",
+    "EnableSsl": false
   }
 }
