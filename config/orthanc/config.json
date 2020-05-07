@@ -1,0 +1,16 @@
+{
+  "Name": "orthanc-s3",
+  "RemoteAccessAllowed": true,
+  "AuthenticationEnabled": false,
+  "StorageDirectory": "OrthancStorage", 
+  "IndexDirectory": "OrthancStorage",
+  "Plugins": ["/usr/share/orthanc/plugins/"],
+  "S3": {
+    "aws_access_key_id": "jupyter",
+    "aws_secret_access_key": "jupyter@analytics",
+    "aws_region": "us-east-1",
+    "s3_endpoint": "http://object-storage:9000",
+    "s3_bucket": "images",
+    "implementation": "transfer_manager"
+  }
+}
