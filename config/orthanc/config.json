@@ -22,5 +22,8 @@
     "Username": "postgres",
     "Password": "images-meta@medical-db",
     "EnableSsl": false
+  },
+  "DicomWeb":{
+    "Enable": true
   }
 }

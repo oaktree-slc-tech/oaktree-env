@@ -51,19 +51,29 @@ services:
     environment:
       POSTGRESQL_PLUGIN_ENABLED: "true"
       PYTHON_PLUGIN_ENABLED: "true"
+      DICOM_WEB_PLUGIN_ENABLED: "true"
 
   zookeeper:
     image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/zookeeper
     restart: always
     ports:
-      - 2181:2181
+    - 2181:2181
 
   kafka:
     image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/kafka
     restart: always
     ports:
-      - 9092:9092
+    - 9092:9092
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka 
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+  
+  nginx:
+    image: nginx:1.17
+    restart: always
+    ports:
+    - 8842:80
+    volumes:
+    - ./config/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
