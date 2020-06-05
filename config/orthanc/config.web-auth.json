@@ -23,7 +23,7 @@
     "Password": "images-meta@medical-db",
     "EnableSsl": false
   },
-  "DicomWeb": {
+  "DicomWeb":{
     "Enable": true,
     "Root": "/dicom-web/",
     "EnableWado": true,
@@ -31,5 +31,10 @@
     "StowMaxInstances": 10,
     "StowMaxSize": 10,
     "QidoCaseSensitive": false
+  },
+  "Authorization": {
+    "WebService": "http://imaging:8070/auth/service/orthanc",
+    "TokenHttpHeaders" : [ "Authorization", "Referer" ],
+    "TokenGetArguments": ["api-auth", "api-token", "token", "authorization"]
   }
 }

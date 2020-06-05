@@ -1,0 +1,10 @@
+version: "2.1"
+services:
+
+  nginx:
+    image: nginx:1.17
+    restart: always
+    ports:
+    - 8842:80
+    volumes:
+    - ./config/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
