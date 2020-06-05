@@ -3,3 +3,5 @@
 .local
 data/minio/images
 data/minio/playground
+config/sonador/dbmigrations/*
+config/sonador/sonador.db

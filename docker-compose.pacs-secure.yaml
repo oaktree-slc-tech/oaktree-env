@@ -1,0 +1,39 @@
+version: "2.1"
+services:
+
+  orthanc-db:
+    image: postgres:11
+    volumes:
+    - ./data/postgres/data:/var/lib/postgresql/data/pgdata
+    environment:
+      POSTGRES_PASSWORD: images-meta@medical-db
+      POSTGRES_USER: postgres
+      POSTGRES_DB: images
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+    - 65432:5432
+
+  orthanc:
+    image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/orthanc-s3
+    ports:
+    - 4242:4242
+    - 8042:8042
+    volumes:
+    - ./config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
+    environment:
+      POSTGRESQL_PLUGIN_ENABLED: "true"
+      PYTHON_PLUGIN_ENABLED: "true"
+      DICOM_WEB_PLUGIN_ENABLED: "true"
+      AUTHORIZATION_PLUGIN_ENABLED: "true"
+  
+  imaging:
+    image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/sonador
+    ports:
+    - 8070:8070
+    volumes:
+    - ./config/sonador:/srv/www/sonador/config
+    - ./data/sonador/docroot:/srv/www/sonador/docroot
+    environment:
+      SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
+      DJANGO_SETTINGS_MODULE: "sonador.settings"
+      
