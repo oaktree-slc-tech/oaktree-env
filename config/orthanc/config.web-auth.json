@@ -4,6 +4,10 @@
   "AuthenticationEnabled": false,
   "StorageDirectory": "OrthancStorage", 
   "IndexDirectory": "OrthancStorage",
+  "DicomServerEnabled": true,
+  "DicomAet": "ORTHANC",
+  "DicomPort": 4242,
+  "DicomModalitiesInDatabase" : true,
   "Plugins": ["/usr/share/orthanc/plugins/"],
   "S3": {
     "aws_access_key_id": "jupyter",
