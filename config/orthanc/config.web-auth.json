@@ -9,6 +9,11 @@
   "DicomPort": 4242,
   "DicomModalitiesInDatabase" : true,
   "Plugins": ["/usr/share/orthanc/plugins/"],
+  "ConcurrentJobs": 4,
+  "JobsHistorySize": 1000,
+  "LimitJobs": 100,
+  "HttpTimeout": 240,
+  "DicomScpTimeout": 60,
   "S3": {
     "aws_access_key_id": "jupyter",
     "aws_secret_access_key": "jupyter@analytics",
@@ -40,5 +45,16 @@
     "WebService": "http://imaging:8070/auth/service/orthanc",
     "TokenHttpHeaders" : [ "Authorization", "Referer" ],
     "TokenGetArguments": ["api-auth", "api-token", "token", "authorization"]
+  },
+  "Sonador": {
+    "SonadorUrl": "http://imaging:8070",
+    "ApiToken": "x73Gqshay2NVZH7SD1xNN2wgt4Vh8B5rRuwrPW5LL0upkAE4UgEf06u6Gqp2ZKxJ",
+    "AccessId": "B56ClPdOR72C0LLe7Tx5WxIlCXJTyACeZsWB3aNhMb1CAaM2rgZ7KT5Bfe6uGrp3",
+    "SecretKey": "YcyCVPwXwqxveVnq1wdl9WvcEwk7EX9ZQY6UYwe7aFal1IgvmMDzu9XynHgAT4AsCEh5FBV5uHJuXIdiw7h9WEHaXcJbbnhcxpmCkCrvnA0hm1KBdNOSCPe12HJ8e5TZ",
+    "OrthancServerId": "e5vUR8o5CR7zaVhP",
+    "InternalDns": true
+  },
+  "Dictionary": {
+    "77ff,4200": ["LO", "ResearchDataSet", 1, 1, "OakTree"]
   }
 }
