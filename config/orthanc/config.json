@@ -5,6 +5,11 @@
   "StorageDirectory": "OrthancStorage", 
   "IndexDirectory": "OrthancStorage",
   "Plugins": ["/usr/share/orthanc/plugins/"],
+  "ConcurrentJobs": 4,
+  "JobsHistorySize": 1000,
+  "LimitJobs": 100,
+  "HttpTimeout": 240,
+  "DicomScpTimeout": 60,
   "S3": {
     "aws_access_key_id": "jupyter",
     "aws_secret_access_key": "jupyter@analytics",
