@@ -1,0 +1,54 @@
+# Orthanc Deployment and In-Cluster Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: orthanc
+  namespace: imaging
+spec:
+  selector:
+    app: orthanc
+  ports:
+  - protocol: TCP
+    port: 8042
+    targetPort: 8042
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orthanc
+  labels:
+    app: orthanc
+  namespace: imaging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orthanc
+  template:
+    metadata:
+      labels:
+        app: orthanc-research
+    spec:
+      containers:
+      - name: orthanc
+        image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/sonador
+        ports:
+        - containerPort: 8042
+        - containerPort: 4242
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/orthanc/orthanc.json
+          subPath: config
+        env:
+        - name: POSTGRESQL_PLUGIN_ENABLED
+          value: "true"
+        - name: PYTHON_PLUGIN_ENABLED
+          value: "true"
+        - name: DICOM_WEB_PLUGIN_ENABLED
+          value: "true"
+        - name: AUTHORIZATION_PLUGIN_ENABLED
+          value: "true"
+      volumes:
+      - name: config-volume
+        configMap:
+          name: orthanc-config
