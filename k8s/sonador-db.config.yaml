@@ -1,0 +1,8 @@
+master:
+  nodeSelector:
+    storagenode: glusterfs
+persistence:
+  storageClass: glusterfs-simple
+  size: 10Gi
+postgresqlPassword: "images-control-password@medical-db"
+postgresqlDatabase: sonador

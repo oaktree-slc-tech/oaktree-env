@@ -1,0 +1,53 @@
+# Configuration for Kubernetes Deployment of Orthanc
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  namespace: imaging
+  name: orthanc-config
+data:
+  config: |
+    {
+      "Name": "orthanc",
+      "RemoteAccessAllowed": true,
+      "AuthenticationEnabled": false,
+      "StorageDirectory": "OrthancStorage",
+      "IndexDirectory": "OrthancStorage",
+      "Plugins": ["/usr/share/orthanc/plugins/"],
+      "DicomServerEnabled": true,
+      "DicomAet": "ORTHANC",
+      "DicomPort": 4242,
+      "DicomModalitiesInDatabase": true,
+      "S3": {
+        "aws_access_key_id": "imaging-user",
+        "aws_secret_access_key": "imaging-secret@minio-storage",
+        "aws_region": "us-east-1",
+        "s3_endpoint": "http://object-storage.default:9000",
+        "s3_bucket": "images",
+        "implementation": "transfer_manager"
+      },
+      "PostgreSQL": {
+        "EnableIndex": true,
+        "EnableStorage": false,
+        "Host": "orthanc-db-postgresql",
+        "Port": 5432,
+        "Database": "images",
+        "Username": "postgres",
+        "Password": "secret-images-password@medical-db",
+        "EnableSsl": false
+      },
+      "DicomWeb":{
+        "Enable": true,
+        "Root": "/dicom-web/",
+        "EnableWado": true,
+        "WadoRoot": "/wado",
+        "StowMaxInstances": 10,
+        "StowMaxSize": 10,
+        "QidoCaseSensitive": false
+      },
+      "Authorization": {
+        "WebService": "http://sonador:8070/auth/service/orthanc",
+        "TokenHttpHeaders" : [ "Authorization", "Referer" ],
+        "TokenGetArguments": ["api-auth", "api-token", "token", "authorization"]
+      }
+    }
+

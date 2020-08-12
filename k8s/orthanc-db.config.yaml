@@ -1,0 +1,9 @@
+# Helm configuration for Bitnami PostgreSQL chart
+master:
+  nodeSelector:
+    storagenode: glusterfs
+persistence:
+  storageClass: glusterfs-simple
+  size: 10Gi
+postgresqlPassword: "secret-images-password@medical-db"
+postgresqlDatabase: "images"
