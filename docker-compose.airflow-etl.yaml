@@ -1,0 +1,12 @@
+version: "2.1"
+services:
+
+  airflow:
+    image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/airflow-etl
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=
+    command: ["webserver"]
+    volumes:
+    - ./data/airflow/dags:/usr/local/airflow/dags
+    ports:
+    - 8989:8080
