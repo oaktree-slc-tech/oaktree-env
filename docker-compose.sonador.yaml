@@ -7,7 +7,23 @@ services:
     - 8070:8070
     volumes:
     - ./config/sonador:/srv/www/sonador/config
-    - ./data/sonador/docroot:/srv/www/sonador/docroot
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
       DJANGO_SETTINGS_MODULE: "sonador.settings"
+      SONADOR_IMAGING_SERVER: dev01
+      SONADOR_IMAGING_SERVER_INTERNAL_SCHEME: http
+      SONADOR_IMAGING_SERVER_PORT: 8842
+      SONADOR_IMAGING_SERVER_NAME: Orthanc-Dev
+      SONADOR_IMAGING_SERVER_HOSTNAME: 127.0.0.1
+      SONADOR_IMAGING_SERVER_SCHEME: http
+      SONADOR_IMAGING_SERVER_DESCRIPTION: "Default Orthanc instance configured for the Oak-Tree Sonador reference environment."
+    command:
+    - /bin/bash
+    - -c
+    - >
+      cd /srv/www/sonador/sonador 
+      && python3 manage.py makemigrations 
+      && python3 manage.py migrate 
+      && python3 manage.py collectstatic
+      && apachectl -D FOREGROUND
+  

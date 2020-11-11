@@ -52,7 +52,11 @@
     "AccessId": "B56ClPdOR72C0LLe7Tx5WxIlCXJTyACeZsWB3aNhMb1CAaM2rgZ7KT5Bfe6uGrp3",
     "SecretKey": "YcyCVPwXwqxveVnq1wdl9WvcEwk7EX9ZQY6UYwe7aFal1IgvmMDzu9XynHgAT4AsCEh5FBV5uHJuXIdiw7h9WEHaXcJbbnhcxpmCkCrvnA0hm1KBdNOSCPe12HJ8e5TZ",
     "OrthancServerId": "e5vUR8o5CR7zaVhP",
-    "InternalDns": true
+    "InternalDns": true,
+    "Kafka": {
+      "topic": "orthanc-index",
+      "servers": ["kafka:9092"]
+    }
   },
   "Dictionary": {
     "77ff,4200": ["LO", "ResearchDataSet", 1, 1, "OakTree"]
