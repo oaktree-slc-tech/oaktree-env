@@ -30,3 +30,18 @@ Multiple `docker-compose` scripts are included so that the components that be de
 * `docker-compose.message-broker.yaml`. RabbitMQ message broker (with management plugin).
 
 **Important**: `docker-compose.pacs.yaml` and `docker-compose.pacs-secure.yaml` cannot be used at the same time as they will cause port and hostname conflicts.
+
+
+### GPU 
+The analytics container has GPU support included in the runtime, which can be used through the `docker-compose.analytics-gpu.yaml`. In order for the GPU accelerated to be recognized, the `nvidia-docker2` host must have the `nvidia-docker2` package installed and an `nvidia` runtime must be defined in `/etc/docker/daemon.json` similar to the example shown in the listing below:
+
+```json
+{
+  "runtimes": {
+  "nvidia": {
+      "path": "/usr/bin/nvidia-container-runtime",
+      "runtimeArgs": []
+    }
+  }
+}
+```
