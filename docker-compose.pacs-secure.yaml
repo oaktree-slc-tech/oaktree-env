@@ -25,5 +25,3 @@ services:
       PYTHON_PLUGIN_ENABLED: "true"
       DICOM_WEB_PLUGIN_ENABLED: "true"
       AUTHORIZATION_PLUGIN_ENABLED: "true"
-    extra_hosts:
-    - "imaging:192.168.10.10"

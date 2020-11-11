@@ -8,6 +8,7 @@ This repository contains configuration, development, and deployment resources fo
 	- PostgreSQL Plugin
 	- (optional) Advanced Authentication Plugin
 * Kafka: a distributed streaming platform
+* RabbitMQ: an AMQP messaging broker and its management console
 * etcd: distributed key-value store used by cluster computing systems to manage and coordinate state
 * Sonador: open source cloud platform for medical imaging visualization and research
 	- OHIF: extensible DICOM viewer platform written in JavaScript
@@ -19,12 +20,13 @@ This repository includes Docker Compose manifests that can be used to deploy som
 ### Docker Compose Manifests
 Multiple `docker-compose` scripts are included so that the components that be deployed in different configurations.
 
-* `docker-compose.storage.yaml`: MinIO, ZooKepper, and Kafka.
-* `docker-compose.pacs.yaml`: Orthanc without the Sonador security/authorization layer enabled.
-* `docker-compose.pacs-secure.yaml`: Orthanc with Sonador security/authorization layer enabled.
+* `docker-compose.core.yaml`. Core services of the environment: MinIO, ZooKepper, and Kafka.
+* `docker-compose.pacs.yaml`. Orthanc without the Sonador security/authorization layer enabled.
+* `docker-compose.pacs-secure.yaml`. Orthanc with Sonador security/authorization layer enabled.
 * `docker-compose.web-proxy.yaml`: NGINX proxy for Orthanc which injects CORS headers. _This is required if you will be using the OHIF viewer instance provided by Sonador._
-* `docker-compose.sonador.yaml`: Sonador and the PostgreSQL database instance.
-* `docker-compose.airflow-etl.yaml`: AirFlow with Sonador/Orthanc client libraries installed.
-* `docker-compose.analytics.yaml`: Jupyter with Sonador/Orthanc client libraries installed.
+* `docker-compose.sonador.yaml`. Sonador and the PostgreSQL database instance.
+* `docker-compose.airflow-etl.yaml`. AirFlow with Sonador/Orthanc client libraries installed.
+* `docker-compose.analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
+* `docker-compose.message-broker.yaml`. RabbitMQ message broker (with management plugin).
 
 **Important**: `docker-compose.pacs.yaml` and `docker-compose.pacs-secure.yaml` cannot be used at the same time as they will cause port and hostname conflicts.
