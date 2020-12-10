@@ -11,6 +11,8 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.models import Variable
 
+from sonador.apisettings import SONADOR_URL, SONADOR_APITOKEN, SONADOR_INTERNAL_DNS, \
+	SONADOR_IMAGING_SERVER
 from sonador.helpers import SonadorServer
 from sonador.apisettings import DCM_EXTENSIONS_DEFAULT
 
@@ -33,24 +35,25 @@ def init_sonador_imageserver(sonador_url, sonador_apitoken, imageserver, interna
 def sonador_serverargs():
 	'''	Retrieve Sonador configuration from AriFlow
 	'''
-	sonador_url = Variable.get('SONADOR_URL')
-	sonador_apitoken = Variable.get('SONADOR_APITOKEN')
-	imageserver = Variable.get('SONADOR_IMAGING_SERVER')
+	sonador_url = Variable.get(SONADOR_URL)
+	sonador_apitoken = Variable.get(SONADOR_APITOKEN)
+	imageserver = Variable.get(SONADOR_IMAGING_SERVER)
+	internal_dns = Variable.get(SONADOR_INTERNAL_DNS)
 
-	return sonador_url, sonador_apitoken, imageserver
+	return sonador_url, sonador_apitoken, imageserver, internal_dns
 
 
 def verify_etl_env(**kwargs):
 	'''	Log the command context to stderr
 	'''
-	sonador_url, sonador_apitoken, imageserver = sonador_serverargs()
+	sonador_url, sonador_apitoken, imageserver, internal_dns = sonador_serverargs()
 
 	if not sonador_url or not sonador_apitoken or not imageserver:
 		logger.error('Invalid Sonador configuration.\nURL: %s\nAPI Token: %s\nImage Server: %s' 
 			% (sonador_url, sonador_apitoken, imageserver))
 		raise ValueError('Invalid Sonador configuration. Please provide valid URL, API token, and image server ID.')
 
-	iserver = init_sonador_imageserver(sonador_url, sonador_apitoken, imageserver)
+	iserver = init_sonador_imageserver(sonador_url, sonador_apitoken, imageserver, internal_dns=internal_dns)
 
 
 def sonador_index_imagearchive(**kwargs):
