@@ -4,7 +4,7 @@ services:
   object-storage:
     image: minio/minio
     volumes:
-    - ./data/minio:/data
+    - ../data/minio:/data
     environment:
       MINIO_ACCESS_KEY: "jupyter"
       MINIO_SECRET_KEY: "jupyter@analytics"

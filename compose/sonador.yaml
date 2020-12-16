@@ -6,7 +6,7 @@ services:
     ports:
     - 8070:8070
     volumes:
-    - ./config/sonador:/srv/www/sonador/config
+    - ../config/sonador:/srv/www/sonador/config
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
       DJANGO_SETTINGS_MODULE: "sonador.settings"

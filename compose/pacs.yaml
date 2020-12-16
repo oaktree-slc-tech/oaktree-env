@@ -3,8 +3,6 @@ services:
 
   orthanc-db:
     image: postgres:11
-    volumes:
-    - ./data/postgres/data:/var/lib/postgresql/data/pgdata
     environment:
       POSTGRES_PASSWORD: images-meta@medical-db
       POSTGRES_USER: postgres
@@ -19,7 +17,7 @@ services:
     - 4242:4242
     - 8042:8042
     volumes:
-    - ./config/orthanc/config.json:/etc/orthanc/orthanc.json:ro
+    - ../config/orthanc/config.json:/etc/orthanc/orthanc.json:ro
     environment:
       POSTGRESQL_PLUGIN_ENABLED: "true"
       PYTHON_PLUGIN_ENABLED: "true"
