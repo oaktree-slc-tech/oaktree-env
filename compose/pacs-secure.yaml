@@ -17,11 +17,11 @@ services:
     - 4242:4242
     - 8042:8042
     volumes:
-    - ./config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
-    - ./config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
-    - /home/roakes/Developer/S+N/orthanc-sonador:/opt/orthanc/
+    - ../config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
+    - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
     environment:
       POSTGRESQL_PLUGIN_ENABLED: "true"
       PYTHON_PLUGIN_ENABLED: "true"
       DICOM_WEB_PLUGIN_ENABLED: "true"
       AUTHORIZATION_PLUGIN_ENABLED: "true"
+    
