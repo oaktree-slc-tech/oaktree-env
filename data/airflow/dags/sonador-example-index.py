@@ -11,6 +11,8 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.models import Variable
 
+from client.utils.conversion import str2bool
+
 from sonador.apisettings import SONADOR_URL, SONADOR_APITOKEN, SONADOR_INTERNAL_DNS, \
 	SONADOR_IMAGING_SERVER
 from sonador.helpers import SonadorServer
@@ -38,7 +40,7 @@ def sonador_serverargs():
 	sonador_url = Variable.get(SONADOR_URL)
 	sonador_apitoken = Variable.get(SONADOR_APITOKEN)
 	imageserver = Variable.get(SONADOR_IMAGING_SERVER)
-	internal_dns = Variable.get(SONADOR_INTERNAL_DNS)
+	internal_dns = str2bool(Variable.get(SONADOR_INTERNAL_DNS, True))
 
 	return sonador_url, sonador_apitoken, imageserver, internal_dns
 
@@ -82,7 +84,7 @@ def sonador_index_imagearchive(**kwargs):
 		afile = ctzip.open(dcmf)
 		r = iserver.upload_image(afile)
 		rdata = r.json()
-		logger.debug('DCM file %s uploaded successfully to %s.\n%s' % (dcmf, iserver.server_label, rdata))
+		logger.info('DCM file %s uploaded successfully to %s.\n%s' % (dcmf, iserver.server_label, rdata))
 
 		if rdata.get('ParentSeries'):
 			series[rdata.get('ParentSeries')] = series.get(rdata.get('ParentSeries'), 0)+1
