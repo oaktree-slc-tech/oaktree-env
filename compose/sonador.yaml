@@ -21,9 +21,6 @@ services:
     - /bin/bash
     - -c
     - >
-      cd /srv/www/sonador/sonador 
-      && python3 manage.py makemigrations 
-      && python3 manage.py migrate 
-      && python3 manage.py collectstatic
+      cd /srv/www/sonador/sonador
+      && python3 manage.py imaging-env-init
       && apachectl -D FOREGROUND
-  
