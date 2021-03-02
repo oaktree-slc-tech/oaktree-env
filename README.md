@@ -1,5 +1,8 @@
 # Oak-Tree Imaging Development Environment
-This repository contains configuration, development, and deployment resources for the Oak-Tree medical imaging technical stack.  Oak-Tree uses the following components for medical imaging research and visualization projects:
+
+*If you're looking to get started on a local deployment, [follow this guide](https://code.oak-tree.tech/oak-tree/medical-imaging/imaging-development-env/-/wikis/Environment-Setup).*
+
+This repository contains configuration, development, and deployment resources for the Oak-Tree medical imaging technical stack. Oak-Tree uses the following components for medical imaging research and visualization projects:
 
 * MinIO: S3 compatible storage
 * PostgreSQL: Highly performant and scalable storage for imaging metadata
