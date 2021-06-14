@@ -1,8 +1,16 @@
 version: "2.1"
 services:
+
+  sonador-db:
+    image: postgres:11
+    environment:
+      POSTGRES_PASSWORD: images-control@medical-db
+      POSTGRES_USER: postgres
+      POSTGRES_DB: sonador
+      PGDATA: /var/lib/postgresql/data/pgdata
   
   imaging:
-    image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/sonador
+    image: oaktreetech/sonador:latest
     ports:
     - 8070:8070
     volumes:
@@ -10,13 +18,22 @@ services:
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
       DJANGO_SETTINGS_MODULE: "sonador.settings"
+      SONADOR_SERVER_HOSTNAME: imaging.local
+      SONADOR_SERVER_DESCRIPTION: "Sonador Development"
       SONADOR_IMAGING_SERVER: dev01
       SONADOR_IMAGING_SERVER_INTERNAL_SCHEME: http
       SONADOR_IMAGING_SERVER_PORT: 8842
       SONADOR_IMAGING_SERVER_NAME: Orthanc-Dev
-      SONADOR_IMAGING_SERVER_HOSTNAME: 127.0.0.1
+      SONADOR_IMAGING_SERVER_HOSTNAME: orthanc
       SONADOR_IMAGING_SERVER_SCHEME: http
       SONADOR_IMAGING_SERVER_DESCRIPTION: "Default Orthanc instance configured for the Oak-Tree Sonador reference environment."
+      SONADOR_IMAGING_SERVER_DEFAULT: "True"
+      SONADOR_USERNAME: dev01
+      SONADOR_USER_FIRST_NAME: Development
+      SONADOR_USER_LAST_NAME: User
+      SONADOR_USER_EMAIL: "dev01@example.com"
+      SONADOR_USER_PASSWORD: "sonador@development-env"
+      SECURE_API_APITOKEN: "secure-api@sonador-dev"
     command:
     - /bin/bash
     - -c
