@@ -49,8 +49,7 @@ The Sonador and OHIF viewer instance should be accessed using the `imaging.local
 A minimal container environment which includes MinIO, Orthanc, Sonador, Kafka, and a web proxy can be started using the command below (run from the root of the repository):
 
 ```bash
-docker-compose -f compose/core.yaml -f compose/pacs-secure.yaml -f compose/web-proxy.yaml -f \
-  -f compose/sonador.yaml up -d
+docker-compose -f compose/core.yaml -f compose/pacs-secure.yaml -f compose/web-proxy.yaml -f compose/sonador.yaml up -d
 ```
 
 The `up` command will download the images (if not already present), create, and start container instances for each of the required components of the environment.
