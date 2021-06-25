@@ -38,6 +38,8 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 #### DNS
 The following lines need to be added to the `/etc/hosts` file of the development machine to allow for traffic to resolve to the correct containers:
 
+*Windows 10 `/etc/hosts` file is located at `C:\Windows\System32\drivers\etc\hosts`*
+
 ```text
 # Sonador DNS for ipv4 & ipv6
 ::1 object-storage orthanc imaging
