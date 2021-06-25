@@ -38,9 +38,12 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 #### DNS
 The following lines need to be added to the `/etc/hosts` file of the development machine to allow for traffic to resolve to the correct containers:
 
-```
-::1     object-storage orthanc imaging kafka
-::1     imaging.local
+```text
+# Sonador DNS for ipv4 & ipv6
+::1 object-storage orthanc imaging
+::1 imaging.local
+127.0.0.1 object-storage orthanc imaging
+127.0.0.1 imaging.local
 ```
 
 The Sonador and OHIF viewer instance should be accessed using the `imaging.local` domain.
@@ -57,8 +60,11 @@ The `up` command will download the images (if not already present), create, and 
 In order to access the web interface of Sonador, you need to add the following lines to the `/etc/hosts` configuration of the machine.
 
 ```text
-::1     object-storage orthanc imaging
-::1     imaging.local
+# Sonador DNS for ipv4 & ipv6
+::1 object-storage orthanc imaging
+::1 imaging.local
+127.0.0.1 object-storage orthanc imaging
+127.0.0.1 imaging.local
 ```
 
 The Sonador web application can be accessed via `http://imaging.local:8070`. The username/password for the environment are:
