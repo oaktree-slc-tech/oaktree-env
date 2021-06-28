@@ -25,9 +25,7 @@ Repository contents:
 Multiple `docker-compose` scripts are included so that it is possible to deploy the components of the environment in different configurations. All manifests can be found within the the `compose` subfolder of the repository.
 
 * `core.yaml`. Core services of the environment: MinIO, ZooKepper, and Kafka.
-* `pacs.yaml`. Orthanc without the Sonador security/authorization layer enabled.
-* `pacs-secure.yaml`. Orthanc with Sonador security/authorization layer enabled.
-* `web-proxy.yaml`: NGINX proxy for Orthanc which injects CORS headers. _This is required if you will be using the OHIF viewer instance provided by Sonador._
+* `pacs-secure.yaml`. Orthanc with Sonador security/authorization layer enabled. Includes NGINX proxy for Orthanc which injects CORS headers. _This is required if you will be using the OHIF viewer instance provided by Sonador._
 * `sonador.yaml`. Sonador and the PostgreSQL database instance.
 * `airflow-etl.yaml`. AirFlow with Sonador/Orthanc client libraries installed.
 * `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
@@ -54,7 +52,7 @@ The Sonador and OHIF viewer instance should be accessed using the `imaging.local
 A minimal container environment which includes MinIO, Orthanc, Sonador, Kafka, and a web proxy can be started using the command below (run from the root of the repository):
 
 ```bash
-docker-compose -f compose/core.yaml -f compose/pacs-secure.yaml -f compose/web-proxy.yaml -f compose/sonador.yaml up -d
+docker-compose -f compose/core.yaml -f compose/pacs-secure.yaml -f compose/sonador.yaml up -d
 ```
 
 The `up` command will download the images (if not already present), create, and start container instances for each of the required components of the environment.

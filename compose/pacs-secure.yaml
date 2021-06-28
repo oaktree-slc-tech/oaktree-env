@@ -22,3 +22,11 @@ services:
       PYTHON_PLUGIN_ENABLED: "true"
       DICOM_WEB_PLUGIN_ENABLED: "true"
       AUTHORIZATION_PLUGIN_ENABLED: "true"
+  
+  nginx:
+   image: nginx:1.17
+   restart: always
+   ports:
+   - 8842:80
+   volumes:
+   - ../config/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
