@@ -27,9 +27,9 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 * `core.yaml`. Core services of the environment: MinIO, ZooKepper, and Kafka.
 * `pacs-secure.yaml`. Orthanc with Sonador security/authorization layer enabled. Includes NGINX proxy for Orthanc which injects CORS headers. _This is required if you will be using the OHIF viewer instance provided by Sonador._
 * `sonador.yaml`. Sonador and the PostgreSQL database instance.
-* `airflow-etl.yaml`. AirFlow with Sonador/Orthanc client libraries installed.
-* `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
 * `message-broker.yaml`. RabbitMQ message broker (with management plugin).
+* `airflow-etl.yaml`. AirFlow with Sonador/Orthanc client libraries installed. _Requires `message-broker`, `core`, and `pacs-secure.yaml` to be active. Username/password for environment is `airflow:airflow`._
+* `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
 
 **Important**: `pacs.yaml` and `pacs-secure.yaml` cannot be used at the same time as they will cause port and hostname conflicts.
 
