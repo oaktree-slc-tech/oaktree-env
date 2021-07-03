@@ -12,11 +12,13 @@ from airflow.utils.dates import days_ago
 from airflow.models import Variable
 
 from client.utils.conversion import str2bool
+from client.utils.object import pick
 
 from sonador.apisettings import SONADOR_URL, SONADOR_APITOKEN, SONADOR_INTERNAL_DNS, \
 	SONADOR_IMAGING_SERVER
 from sonador.helpers import SonadorServer
-from sonador.apisettings import DCM_EXTENSIONS_DEFAULT
+from sonador.apisettings import DCM_EXTENSIONS_DEFAULT, IMAGING_SERVER_RESOURCE_SERIES
+from sonador.tasks.uploads import imageserver_upload_archive
 
 logger = logging.getLogger(__name__)
 
@@ -68,28 +70,12 @@ def sonador_index_imagearchive(**kwargs):
 		BytesIO(requests.get(
 			Variable.get('SONADOR_EXAMPLE02_ARCHIVEURL', default_var=ARCHIVE_URL_DEFAULT)).content))
 
-	# Locate all DCM files included in the archive, index, track the series IDs
-	dcmfiles = []
-	series = {}
+	hcache, fcount = imageserver_upload_archive(iserver, ctzip)
 
-	# List files form the zip archive, check file pattern, and add matching patterns
-	fnames = ctzip.namelist()
-	for p in DCM_FPATTERNS:
-		dcmfiles.extend([f for f in fnames if p.search(f)])
+	for mkey, dmeta in hcache.items():
+		logger.info('Uploaded %s successfully to %s. Metadata: %s.' % (mkey, iserver.server_label, dmeta))
 
-	# Iterate through the file names, extract form the archive, upload to Sonador/Orthanc
-	for dcmf in dcmfiles:
-	
-		# Open file reference from the archive, upload the file to Sonador/Orthanc
-		afile = ctzip.open(dcmf)
-		r = iserver.upload_image(afile)
-		rdata = r.json()
-		logger.info('DCM file %s uploaded successfully to %s.\n%s' % (dcmf, iserver.server_label, rdata))
-
-		if rdata.get('ParentSeries'):
-			series[rdata.get('ParentSeries')] = series.get(rdata.get('ParentSeries'), 0)+1
-
-	return series
+	return [pick(m, ('uid', 'resource', 'header')) for m in hcache if m.resource == IMAGING_SERVER_RESOURCE_SERIES]
 
 
 def sonador_validate_indexop(**context):
@@ -100,22 +86,24 @@ def sonador_validate_indexop(**context):
 
 	# Retrieve upload results from indexing operation
 	tdata = ti.xcom_pull(task_ids='example02-index-imagearchive') or {}
-	logger.info('DCM series uploaded to server:\n%s' % 
-		'\n'.join(['%s: %s' % (k,v) for k,v in tdata.items()]) if tdata else '')
 
 	# Iterate through items, verify upload, and pass along validated list of uploaded series
 	sindex_validated = []
 
-	for sid, scount in tdata.items():
+	for sdata in tdata:
 
-		# Retrieve series from Orthanc and compare the upload results from the previous
-		# task to the number of indexed slices
-		s = iserver.get_series(sid)
-		upload_verified = scount == len(s.slices)
-		logger.info('Series %s: uploaded=%d indexed=%d match=%s' % (sid, scount, len(s.slices), upload_verified))
+		# Verify that upload was successful
+		sresults = iserver.query({ sdata.get('header'): sdata.get('uid') })
+		if len(sresults) > 0:
 
-		if upload_verified:
-			sindex_validated.append(sid)
+			# Retrieve series from Orthanc and compare the upload results from the previous
+			# task to the number of indexed slices
+			s = sresults[0]
+			upload_verified = len(s.slices) > 0
+			logger.info('Series %s: uploaded=%d match=%s' % (s.pk, len(s.slices), upload_verified))
+
+			if upload_verified:
+				sindex_validated.append(s.pk)
 
 	return sindex_validated
 
