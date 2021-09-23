@@ -26,6 +26,7 @@ services:
       SONADOR_IMAGING_SERVER_NAME: Orthanc-Dev
       SONADOR_IMAGING_SERVER_HOSTNAME: orthanc
       SONADOR_IMAGING_SERVER_SCHEME: http
+      SONADOR_IMAGING_SERVER_INTERNAL_PORT: 8042
       SONADOR_IMAGING_SERVER_DESCRIPTION: "Default Orthanc instance configured for the Oak-Tree Sonador reference environment."
       SONADOR_IMAGING_SERVER_DEFAULT: "True"
       SONADOR_USERNAME: dev01
