@@ -22,6 +22,8 @@ services:
 
   kafka:
     image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/kafka
+    depends_on:
+    - zookeeper
     restart: always
     ports:
     - 9092:9092
@@ -29,3 +31,4 @@ services:
       KAFKA_ADVERTISED_HOST_NAME: kafka 
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
