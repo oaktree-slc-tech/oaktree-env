@@ -12,13 +12,13 @@ This repository contains configuration, development, and deployment resources fo
 * etcd: distributed key-value store used by cluster computing systems to manage and coordinate state
 * Sonador: open source cloud platform for medical imaging visualization and research
 	- OHIF: extensible DICOM viewer platform written in JavaScript
-* AirFlow: open source ETL platform for managing data
+* Airflow: open source ETL platform for managing data
 
 Repository contents:
 
 * Docker Compose manifests that can be used to deploy some (or all) of the components for a development environment can be found with the `compose` folder. 
 * Kubernetes manifests that are appropriate for the deploymenmt of the pieces to staging or production clusters can be found in the `k8s` folder.
-* Sample configuration for Orthanc, Sonador, AirFlow, and NGINX are available in the `config` folder. _Note: This environment includes CORS options for Sonador and NGINX._
+* Sample configuration for Orthanc, Sonador, Airflow, and NGINX are available in the `config` folder. _Note: This environment includes CORS options for Sonador and NGINX._
 
 
 ### Docker Compose Manifests
@@ -28,7 +28,8 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 * `pacs-secure.yaml`. Orthanc with Sonador security/authorization layer enabled. Includes NGINX proxy for Orthanc which injects CORS headers. _This is required if you will be using the OHIF viewer instance provided by Sonador._
 * `sonador.yaml`. Sonador and the PostgreSQL database instance.
 * `message-broker.yaml`. RabbitMQ message broker (with management plugin).
-* `airflow-etl.yaml`. AirFlow with Sonador/Orthanc client libraries installed. _Requires `message-broker`, `core`, and `pacs-secure.yaml` to be active. Username/password for environment is `airflow:airflow`._
+* `airflow-etl.yaml`. Airflow with Sonador/Orthanc client libraries installed. _Requires `message-broker.yaml`, `core.yaml`, and `pacs-secure.yaml` to be active. Username/password for environment is `airflow:airflow`._
+  - `airflow-etl.gitlab-sso.yaml`: specialized Airflow configuration with dependencies needed to support GitLab as an SSO Identity Provider. _Refer to notes below for configuration instructions and to ["Using GitLab as an Identity Provider for Apache Airflow 2"](https://www.oak-tree.tech/blog/k8s-airflow-oauth2-gitlab) for implementation details._
 * `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
 
 **Important**: `pacs.yaml` and `pacs-secure.yaml` cannot be used at the same time as they will cause port and hostname conflicts.
@@ -107,3 +108,32 @@ The analytics container has GPU support included in the runtime, which can be us
 
 ### Sonador Web Application Development Environment
 If you need to make changes to the Sonador web application, it is often easier to create a local development instance which runs under the Django development server. For instructions on how to obtain the sources and configure the web application to run locally but use backing services hosted in the containers, [follow this guide](https://code.oak-tree.tech/oak-tree/medical-imaging/imaging-development-env/-/wikis/Environment-Setup).
+
+
+### GitLab SSO
+The Sonador platform includes support for Single Sign On via the OpenID Connect protocol, and can be used for authentication for Sonador (and by extension Orthanc) and Airflow.
+
+#### Airflow
+In the `compose` subfolder of the repository, there is an example manifest that shows the configuration required to enable GitLab SSO for Airflow. Before you can use the manifest, however, you first need to setup a file that provides the OpenID connect configuration for your GitLab instance.
+
+An example file called `client_secret.json.sample` showing how this can be done is found in the `config/airflow` subfolder. Create a copy of the file in the same directory, calling it `client_secret.json` and provide the OIDC `client_id`, `client_secret`, GitLab URL, and Airflow URL.
+
+_For additional detail about how the GitLab SSO has been implemented within Airflow, refer to ["Using Gitlab as an Identity Provider for Apache Airflow 2"](https://www.oak-tree.tech/blog/k8s-airflow-oauth2-gitlab)._
+
+##### Assigning an Airflow Role
+Depending on the default role that is specified within the environment, new Airflow users may not be granted any permissions. Before they are able to access the web interface or interface with the system via the API, they need to be granted an expanded role. This can be done using the `users` command of the the `airflow` CLI utility.
+
+You can access the `airflow` via one of the container instances:
+
+```bash
+# docker exec to one of the container instances to access the Airflow CLI tools.
+# The sample command below uses the webserver container instance.
+docker exec -it compose_airflow-webserver_1 bash
+```
+
+From there you can use `airflow users --add-role` to allocate expanded permissions. The example below grants `Admin` permissions to a user called `username`:
+
+```bash
+# Grant Admin permissions to the "username" user.
+airflow add-role -u username -r Admin
+```

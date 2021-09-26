@@ -15,15 +15,17 @@
 #                              Default: airflow
 # _AIRFLOW_WWW_USER_PASSWORD - Password for the administrator account.
 #                              Default: airflow
-#
+# ALLOWED_GITLAB_GROUPS      - Comma separated list of the groups allowed to authenticate
+#                              to the Airflow instance.
 ---
 version: '3.8'
 
 x-airflow-common:
   &airflow-common
-  image: oaktreetech/sonador-airflow
+  image: oaktreetech/sonador-airflow.gitlab-sso
   environment:
     &airflow-common-env
+    SECRET_KEY: 'jCmrrylZiSrEJWAXqDxxzdX379ugMv+kd7wOgV7GSX4g/f8o8pMFiFj4ejiW17jz'
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
@@ -34,11 +36,17 @@ x-airflow-common:
     AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
     AIRFLOW_WWW_USER_USERNAME: 'dev01'
     AIRFLOW_WWW_USER_PASSWORD: 'sonador@development-env'
+    
+    # Comma separated list of GitLab groups that the user should be a member of
+    # in order to be able to access AirFlow.
+    ALLOWED_GITLAB_GROUPS: "oak-tree,medical-imaging"
 
   volumes:
     - ../data/airflow/dags:/opt/airflow/dags
     - ../data/airflow/logs:/opt/airflow/logs
     - ../data/airflow/plugins:/opt/airflow/plugins
+    - ../docker/airflow/gitlab-sso.webserver_config.py:/opt/airflow/webserver_config.py:ro
+    - ../config/airflow/client_secret.json:/opt/airflow/client_secret.json:ro
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
   depends_on:
   - airflow-postgres
