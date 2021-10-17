@@ -33,9 +33,12 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
+    AIRFLOW__API__AUTH_BACKEND: 'sonador_auth'
     AIRFLOW_WWW_USER_USERNAME: 'dev01'
     AIRFLOW_WWW_USER_PASSWORD: 'sonador@development-env'
+    SONADOR_URL: "http://imaging:8070"
+    SONADOR_APITOKEN: "secure-api@sonador-dev"
+    SONADOR_SERVICE_CLIENT_ID: 'airflow'
     
     # Comma separated list of GitLab groups that the user should be a member of
     # in order to be able to access AirFlow.
@@ -45,6 +48,7 @@ x-airflow-common:
     - ../data/airflow/dags:/opt/airflow/dags
     - ../data/airflow/logs:/opt/airflow/logs
     - ../data/airflow/plugins:/opt/airflow/plugins
+    - ../docker/airflow/airflow-api.sonador_auth.py:/opt/airflow/sonador_auth.py:ro
     - ../docker/airflow/gitlab-sso.webserver_config.py:/opt/airflow/webserver_config.py:ro
     - ../config/airflow/client_secret.json:/opt/airflow/client_secret.json:ro
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
