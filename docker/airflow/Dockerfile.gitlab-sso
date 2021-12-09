@@ -1,4 +1,4 @@
-FROM oaktreetech/sonador-airflow:2.1.4-python3.8
+FROM oaktreetech/sonador-airflow:2.2.1-python3.8
 
 # Install dependencies needed for OpenID connect authentication.
 RUN pip3 install flask-oidc aiohttp
