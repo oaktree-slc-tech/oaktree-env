@@ -15,13 +15,13 @@ services:
     - 9000:9000
 
   zookeeper:
-    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/zookeeper
+    image: registry.oak-tree.tech/courseware/oak-tree/dataops-examples/zookeeper
     restart: always
     ports:
     - 2181:2181
 
   kafka:
-    image: code.oak-tree.tech:5005/courseware/oak-tree/dataops-examples/kafka
+    image: registry.oak-tree.tech/courseware/oak-tree/dataops-examples/kafka
     depends_on:
     - zookeeper
     restart: always
