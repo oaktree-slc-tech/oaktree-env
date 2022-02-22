@@ -50,7 +50,7 @@
     "QidoCaseSensitive": false
   },
   "Authorization": {
-    "WebService": "http://imaging:8070/auth/service/orthanc/dev01/auth",
+    "WebService": "http://imaging:8070/auth/service/orthanc/dev01/introspect",
     "TokenHttpHeaders" : [ "Authorization", "Referer" ],
     "TokenGetArguments": ["api-auth", "api-token", "token", "authorization"]
   },
