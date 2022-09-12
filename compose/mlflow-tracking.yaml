@@ -1,0 +1,24 @@
+version: "2.1"
+services:
+
+  mlflow-db:
+    image: postgres:11
+    environment:
+      POSTGRES_PASSWORD: machine-learning-experiment-tracking
+      POSTGRES_USER: postgres
+      POSTGRES_DB: mlflow
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  mlflow:
+    image: oaktreetech/mlflow 
+    volumes:
+    - ../data/mlflow:/home/mlflow
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: "http://object-storage:9000"
+      AWS_SECRET_ACCESS_KEY: "jupyter@analytics"
+      AWS_ACCESS_KEY_ID: "jupyter"
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", 
+              "--backend-store-uri", "postgresql://postgres:machine-learning-experiment-tracking@mlflow-db:5432/mlflow",
+              "--default-artifact-root", "s3://mlflow-experiments"]
+    ports:
+    - 5000:5000
