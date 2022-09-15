@@ -39,10 +39,10 @@ x-airflow-common:
     SONADOR_SERVICE_CLIENT_ID: 'airflow'
 
   volumes:
-    - ../data/airflow/dags:/opt/airflow/dags
-    - ../data/airflow/logs:/opt/airflow/logs
-    - ../data/airflow/plugins:/opt/airflow/plugins
-    - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.8/site-packages/sonador_auth.py:ro
+  - ../data/airflow/dags:/opt/airflow/dags
+  - ../data/airflow/logs:/opt/airflow/logs
+  - ../data/airflow/plugins:/opt/airflow/plugins
+  - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.8/site-packages/sonador_auth.py:ro
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
   depends_on:
   - airflow-postgres
@@ -57,7 +57,7 @@ services:
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
     volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
+    - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 5s
@@ -91,8 +91,8 @@ services:
     command: celery worker
     healthcheck:
       test:
-        - "CMD-SHELL"
-        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      - "CMD-SHELL"
+      - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
       interval: 10s
       timeout: 10s
       retries: 5

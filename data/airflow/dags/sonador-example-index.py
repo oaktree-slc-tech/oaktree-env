@@ -16,7 +16,7 @@ from client.utils.object import pick
 
 from sonador.apisettings import SONADOR_URL, SONADOR_APITOKEN, SONADOR_INTERNAL_DNS, \
 	SONADOR_IMAGING_SERVER
-from sonador.helpers import SonadorServer
+from sonador.servers import SonadorServer
 from sonador.apisettings import DCM_EXTENSIONS_DEFAULT, IMAGING_SERVER_RESOURCE_SERIES
 from sonador.tasks.uploads import imageserver_upload_archive
 
