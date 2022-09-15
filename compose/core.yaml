@@ -2,17 +2,20 @@ version: "2.1"
 services:
 
   object-storage:
-    image: minio/minio
+    image: minio/minio 
     volumes:
     - ../data/minio:/data
     environment:
-      MINIO_ACCESS_KEY: "jupyter"
-      MINIO_SECRET_KEY: "jupyter@analytics"
+      MINIO_ROOT_USER: "jupyter"
+      MINIO_ROOT_PASSWORD: "jupyter@analytics"
     command:
     - server
     - /data
+    - "--console-address"
+    - ":9001"
     ports:
     - 9000:9000
+    - 9001:9001
 
   zookeeper:
     image: registry.oak-tree.tech/courseware/oak-tree/dataops-examples/zookeeper
