@@ -8,11 +8,7 @@ services:
     environment:
       MINIO_ROOT_USER: "jupyter"
       MINIO_ROOT_PASSWORD: "jupyter@analytics"
-    command:
-    - server
-    - /data
-    - "--console-address"
-    - ":9001"
+    command: ["server", "--console-address", ":9001", "/data"]
     ports:
     - 9000:9000
     - 9001:9001
