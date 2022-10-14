@@ -1,3 +1,6 @@
 {
-	"PythonScript": "/opt/orthanc/orthanc-sonador/sonador-plugin.py"
+	"PythonScript": "/opt/orthanc/orthanc-sonador/sonador-plugin.py",
+	"LuaScripts": [
+    	"/opt/orthanc/orthanc-sonador/lua/SonadorEvents.lua"
+  	]
 }
