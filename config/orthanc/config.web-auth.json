@@ -22,14 +22,6 @@
     "s3_bucket": "images",
     "implementation": "transfer_manager"
   },
-  "AwsS3Storage": {
-    "AccessKey": "jupyter",
-    "SecretKey": "jupyter@analytics",
-    "Region": "us-east-1",
-    "Endpoint": "http://object-storage:9000",
-    "BucketName": "images",
-    "VirtualAddressing": "false"
-  },
   "PostgreSQL": {
     "EnableIndex": true,
     "EnableStorage": false,
