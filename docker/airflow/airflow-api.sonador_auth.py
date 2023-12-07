@@ -18,7 +18,7 @@ from functools import wraps
 from typing import Any, Callable, Optional, Tuple, TypeVar, Union, cast
 
 from flask import Response, current_app, request
-from flask_appbuilder.security.sqla.models import User
+from airflow.auth.managers.fab.models import User
 from flask_login import login_user
 
 from client.utils.urls import validate_url
