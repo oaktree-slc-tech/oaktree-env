@@ -1,20 +1,27 @@
 version: "2.1"
 services:
 
+  # Sonador PostgreSQL instance
   sonador-db:
     image: postgres:11
+    volumes:
+    - sonador-postgres:/var/lib/postgresql/data/pgdata
     environment:
       POSTGRES_PASSWORD: images-control@medical-db
       POSTGRES_USER: postgres
       POSTGRES_DB: sonador
       PGDATA: /var/lib/postgresql/data/pgdata
   
+  # Sonador Web Application
   imaging:
     image: oaktreetech/sonador:latest
     ports:
     - 8070:8070
     volumes:
     - ../config/sonador:/srv/www/sonador/config
+    # Uncomment the line below to mount a local checkout of the Sonador Web Application
+    # sources staged in ../src/sonador to enable local development.
+    # - ../src/sonador:/srv/www/sonador/sonador
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
       DJANGO_SETTINGS_MODULE: "sonador.settings"
@@ -33,3 +40,6 @@ services:
       cd /srv/www/sonador/sonador
       && python3 manage.py imaging-env-init
       && apachectl -D FOREGROUND
+
+volumes:
+  sonador-postgres:

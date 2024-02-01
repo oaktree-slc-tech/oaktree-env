@@ -29,9 +29,18 @@ spec:
       labels:
         app: orthanc-research
     spec:
+      initContainers:
+      - name: init-orthanc-db
+        image: oaktreetech/orthanc-sonador
+        command: ["/bin/bash"]
+        args: ["-c", "cd /opt/orthanc/orthanc-sonador && alembic upgrade head"]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/orthanc/orthanc.json
+          subPath: config
       containers:
       - name: orthanc
-        image: code.oak-tree.tech:5005/oak-tree/medical-imaging/imaging-development-env/sonador
+        image: oaktreetech/orthanc-sonador
         ports:
         - containerPort: 8042
         - containerPort: 4242
@@ -48,6 +57,16 @@ spec:
           value: "true"
         - name: AUTHORIZATION_PLUGIN_ENABLED
           value: "true"
+        - name: AWS_S3_STORAGE_PLUGIN_ENABLED
+          value: "false"
+        - name: OHIF_PLUGIN_ENABLED
+          value: "true"
+        livenessProbe:
+          exec:
+            command:
+            - /opt/orthanc/orthanc-sonador/maintenance/orthanc-server-status.py
+          initialDelaySeconds: 30
+          periodSeconds: 30
       volumes:
       - name: config-volume
         configMap:
