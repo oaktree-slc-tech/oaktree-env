@@ -10,13 +10,20 @@ data:
       "Name": "orthanc",
       "RemoteAccessAllowed": true,
       "AuthenticationEnabled": false,
-      "StorageDirectory": "OrthancStorage",
+      "StorageDirectory": "OrthancStorage", 
       "IndexDirectory": "OrthancStorage",
-      "Plugins": ["/usr/share/orthanc/plugins/"],
       "DicomServerEnabled": true,
       "DicomAet": "ORTHANC",
       "DicomPort": 4242,
-      "DicomModalitiesInDatabase": true,
+      "DicomModalitiesInDatabase" : true,
+      "Plugins": ["/usr/share/orthanc/plugins/"],
+      "ConcurrentJobs": 4,
+      "JobsHistorySize": 1000,
+      "LimitJobs": 100,
+      "HttpTimeout": 240,
+      "DicomScpTimeout": 60,
+      "UnknownSopClassAccepted" : true,
+      "StableAge": 10,
       "S3": {
         "aws_access_key_id": "imaging-user",
         "aws_secret_access_key": "imaging-secret@minio-storage",
@@ -45,9 +52,126 @@ data:
         "QidoCaseSensitive": false
       },
       "Authorization": {
-        "WebService": "http://sonador:8070/auth/service/orthanc",
+        "WebService": "http://imaging:8070/auth/service/orthanc/dev01/introspect",
         "TokenHttpHeaders" : [ "Authorization", "Referer" ],
         "TokenGetArguments": ["api-auth", "api-token", "token", "authorization"]
+      },
+      "Sonador": {
+        "SonadorUrl": "http://imaging.imaging:8070",
+        "ApiToken": "secure-api@sonador-dev",
+        "OrthancServerId": "dev01",
+        "OrthancServerScheme": "http",
+        "OrthancServerHostname": "orthanc.imaging",
+        "OrthancServerPort": 8842,
+        "OrthancServerName": "Dev01",
+        "OrthancServerDescription": "Primary imaging archive for Sonador development environment.",
+        "OrthancServerInternalScheme": "http",
+        "OrthancServerInternalHostname": "orthanc.imaging",
+        "OrthancServerInternalPort": 8042,
+        "OrthancServerActive": true,
+        "InternalDns": true,
+        "Kafka": {
+          "topic": "orthanc-index",
+          "servers": ["kafka:9092"]
+      },
+      "Dictionary": {
+        "77ff,4200": ["LO", "ResearchDataSet", 1, 1, "OakTree"],
+        "77ff,0003": ["UT", "VisionairePatientIDSource", 1, 1, "SN-Visionaire"],
+        "77ff,0001": ["UT", "VisionaireResponsiblePersonID", 1, 1, "SN-Visionaire"],
+        "77ff,0002": ["UT", "VisionaireResponsiblePersonEmail", 1, 1, "SN-Visionaire"],
+        "77ff,0004": ["UT", "VisionaireClinicalTrialSiteAddress", 1, 1, "SN-Visionaire"],
+        "77ff,0005": ["DS", "VisionairePlanRevision", 1, 1, "SN-Visionaire"],
+        "77ff,0006": ["UT", "VisionaireResponsiblePersonAddress", 1, 1, "SN-Visionaire"]
+      },
+      "ExtraMainDicomTags": {
+        "Instance": [
+          "Rows",
+          "Columns",
+          "ImageType",
+          "SOPClassUID",
+          "ContentDate",
+          "ContentTime",
+          "FrameOfReferenceUID",
+          "PixelSpacing",
+          "SpecificCharacterSet",
+          "BitsAllocated",
+          "BitsStored"
+        ],
+        "Series": [
+          "TimezoneOffsetFromUTC",
+          "RequestAttributesSequence",
+          "ClinicalTrialCoordinatingCenterName",
+          "ClinicalTrialSeriesID",
+          "ClinicalTrialSeriesDescription",
+          "PatientPosition",
+          "SoftwareVersions",
+          "Laterality",
+          "InstitutionName",
+          "ImplantName",
+          "ImplantPartNumber",
+          "ImplantSize"
+        ],
+        "Study": [
+          "ClinicalTrialSponsorName",
+          "ClinicalTrialProtocolID",
+          "ClinicalTrialProtocolName",
+          "ClinicalTrialSiteID",
+          "ServiceEpisodeID",
+          "ClinicalTrialSiteName",
+          "ClinicalTrialSubjectID",
+          "TimezoneOffsetFromUTC",
+          "ClinicalTrialTimePointID",
+          "ClinicalTrialTimePointDescription",
+          "LongitudinalTemporalOffsetFromEvent",
+          "LongitudinalTemporalEventType",
+          "SpecificCharacterSet",
+          "PhysiciansOfRecord",
+          "ResponsiblePerson",
+          "ResponsiblePersonRole",
+          "ScheduledProcedureStepStartDate",
+          "ScheduledProcedureStepStartTime",
+          "ScheduledProcedureStepEndDate",
+          "ScheduledProcedureStepEndTime",
+          "PerformedProcedureStepStartDate",
+          "PerformedProcedureStepStartTime",
+          "PerformedProcedureStepEndDate",
+          "PerformedProcedureStepEndTime"
+        ],
+        "Patient": [
+        ]
+      },
+      "PrivateMainDicomTags": {
+        "Patient": [
+          "VisionairePatientIDSource"
+        ],
+        "Study": [
+          "VisionaireResponsiblePersonID",
+          "VisionaireResponsiblePersonEmail",
+          "VisionaireResponsiblePersonAddress",
+          "VisionaireClinicalTrialSiteAddress"
+        ],
+        "Series": [
+          "VisionairePlanRevision"
+        ]
+      },
+      "DicomExtDatetime": {
+        "Study": [
+          "PerformedProcedureStepStartDate,PerformedProcedureStepStartTime",
+          "PerformedProcedureStepEndDate,PerformedProcedureStepEndTime",
+          "ScheduledProcedureStepStartDate,ScheduledProcedureStepStartTime",
+          "ScheduledProcedureStepEndDate,ScheduledProcedureStepEndTime"
+        ]
+      },
+      "Housekeeper": {
+        "Enable": true,
+        "GlobalPropertyId": 2025,
+        "Force": false,
+        "ThrottleDelay": 1,
+        "Triggers" : {
+          "StorageCompressionChange": true,
+          "MainDicomTagsChange": true,
+          "UnnecessaryDicomAsJsonFiles": true,
+          "IngestTranscodingChange": true
+        }
       }
     }
-
