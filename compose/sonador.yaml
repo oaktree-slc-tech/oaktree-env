@@ -2,7 +2,7 @@ version: "2.1"
 services:
 
   sonador-db:
-    image: postgres:11
+    image: postgres:12
     environment:
       POSTGRES_PASSWORD: images-control@medical-db
       POSTGRES_USER: postgres
@@ -10,7 +10,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
   
   imaging:
-    image: oaktreetech/sonador:latest
+    image: registry.oak-tree.tech/oak-tree/medical-imaging/sonador/zayd/gcp-11-23:latest
     ports:
     - 8070:8070
     volumes:
@@ -32,4 +32,4 @@ services:
     - >
       cd /srv/www/sonador/sonador
       && python3 manage.py imaging-env-init
-      && apachectl -D FOREGROUND
+      && uvicorn sonador.asgi:application --port 8070 --host 0.0.0.0

@@ -10,7 +10,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
 
   orthanc:
-    image: oaktreetech/orthanc-sonador:latest
+    image: registry.oak-tree.tech/oak-tree/medical-imaging/orthanc-sonador/0.3-beta1
     ports:
     - 4242:4242
     - 8042:8042
