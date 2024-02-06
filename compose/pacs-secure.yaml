@@ -9,6 +9,18 @@ services:
       POSTGRES_DB: images
       PGDATA: /var/lib/postgresql/data/pgdata
 
+  orthanc-init-db:
+    image: oaktreetech/orthanc-sonador
+    volumes:
+    - ../config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
+    - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
+    depends_on:
+      orthanc-db:
+        condition: service_started
+    entrypoint: ["bash", "-c"]
+    command:
+    - cd /opt/orthanc/orthanc-sonador && sleep 7 && alembic upgrade head
+
   orthanc:
     image: registry.oak-tree.tech/oak-tree/medical-imaging/orthanc-sonador/0.3-beta1
     ports:
@@ -22,7 +34,7 @@ services:
       PYTHON_PLUGIN_ENABLED: "true"
       DICOM_WEB_PLUGIN_ENABLED: "true"
       AUTHORIZATION_PLUGIN_ENABLED: "true"
-  
+
   nginx:
    image: nginx:1.17
    restart: always
