@@ -3,7 +3,7 @@ services:
 
   # Sonador PostgreSQL instance
   sonador-db:
-    image: postgres:12
+    image: postgres:15
     environment:
       POSTGRES_PASSWORD: images-control@medical-db
       POSTGRES_USER: postgres
@@ -12,13 +12,11 @@ services:
   
   # Sonador Web Application
   imaging:
-    image: registry.oak-tree.tech/oak-tree/medical-imaging/sonador/zayd/gcp-11-23:latest
+    image: oaktreetech/sonador:latest
     ports:
     - 8070:8070
     volumes:
     - ../config/sonador:/srv/www/sonador/config
-    # Uncomment the line below to mount a local checkout of the Sonador Web Application
-    # sources staged in ../src/sonador to enable local development.
     # - ../src/sonador:/srv/www/sonador/sonador
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
@@ -31,10 +29,14 @@ services:
       SONADOR_USER_EMAIL: "dev01@example.com"
       SONADOR_USER_PASSWORD: "sonador@development-env"
       SECURE_API_APITOKEN: "secure-api@sonador-dev"
+    depends_on:
+      sonador-db:
+        condition: service_started
     command:
     - /bin/bash
     - -c
     - >
-      cd /srv/www/sonador/sonador
+      sleep 20
+      && cd /srv/www/sonador/sonador
       && python3 manage.py imaging-env-init
       && uvicorn sonador.asgi:application --port 8070 --host 0.0.0.0
