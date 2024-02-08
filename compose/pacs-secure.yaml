@@ -3,6 +3,8 @@ services:
 
   orthanc-db:
     image: postgres:11
+    volumes:
+    - orthanc-postgres:/var/lib/postgresql/data/pgdata
     environment:
       POSTGRES_PASSWORD: images-meta@medical-db
       POSTGRES_USER: postgres
@@ -29,12 +31,14 @@ services:
     volumes:
     - ../config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
     - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
+    # Uncomment the line below to mount a local checkout of the Orthanc Sonador Plugin
+    # sources staged in../src/orthanc-sonador to enable local development.
+    # - ../src/orthanc-sonador:/opt/orthanc/orthanc-sonador
     environment:
       POSTGRESQL_PLUGIN_ENABLED: "true"
       PYTHON_PLUGIN_ENABLED: "true"
       DICOM_WEB_PLUGIN_ENABLED: "true"
       AUTHORIZATION_PLUGIN_ENABLED: "true"
-
   nginx:
    image: nginx:1.17
    restart: always
@@ -42,3 +46,10 @@ services:
    - 8842:80
    volumes:
    - ../config/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+   depends_on:
+   - orthanc-db
+   - orthanc
+
+
+volumes:
+  orthanc-postgres:

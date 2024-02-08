@@ -14,6 +14,8 @@
   "LimitJobs": 100,
   "HttpTimeout": 240,
   "DicomScpTimeout": 60,
+  "UnknownSopClassAccepted" : true,
+  "StableAge": 10,
   "S3": {
     "aws_access_key_id": "jupyter",
     "aws_secret_access_key": "jupyter@analytics",
@@ -63,8 +65,105 @@
     "Kafka": {
       "topic": "orthanc-index",
       "servers": ["kafka:9092"]
-    }
-  },
+  }},
   "Dictionary": {
+    "77ff,4200": ["LO", "ResearchDataSet", 1, 1, "OakTree"],
+    "77ff,0003": ["UT", "VisionairePatientIDSource", 1, 1, "SN-Visionaire"],
+    "77ff,0001": ["UT", "VisionaireResponsiblePersonID", 1, 1, "SN-Visionaire"],
+    "77ff,0002": ["UT", "VisionaireResponsiblePersonEmail", 1, 1, "SN-Visionaire"],
+    "77ff,0004": ["UT", "VisionaireClinicalTrialSiteAddress", 1, 1, "SN-Visionaire"],
+    "77ff,0005": ["DS", "VisionairePlanRevision", 1, 1, "SN-Visionaire"],
+    "77ff,0006": ["UT", "VisionaireResponsiblePersonAddress", 1, 1, "SN-Visionaire"]
+  },
+  "ExtraMainDicomTags": {
+    "Instance": [
+      "Rows",
+      "Columns",
+      "ImageType",
+      "SOPClassUID",
+      "ContentDate",
+      "ContentTime",
+      "FrameOfReferenceUID",
+      "PixelSpacing",
+      "SpecificCharacterSet",
+      "BitsAllocated",
+      "BitsStored"
+    ],
+    "Series": [
+      "TimezoneOffsetFromUTC",
+      "RequestAttributesSequence",
+      "ClinicalTrialCoordinatingCenterName",
+      "ClinicalTrialSeriesID",
+      "ClinicalTrialSeriesDescription",
+      "PatientPosition",
+      "SoftwareVersions",
+      "Laterality",
+      "InstitutionName",
+      "ImplantName",
+      "ImplantPartNumber",
+      "ImplantSize"
+    ],
+    "Study": [
+      "ClinicalTrialSponsorName",
+      "ClinicalTrialProtocolID",
+      "ClinicalTrialProtocolName",
+      "ClinicalTrialSiteID",
+      "ServiceEpisodeID",
+      "ClinicalTrialSiteName",
+      "ClinicalTrialSubjectID",
+      "TimezoneOffsetFromUTC",
+      "ClinicalTrialTimePointID",
+      "ClinicalTrialTimePointDescription",
+      "LongitudinalTemporalOffsetFromEvent",
+      "LongitudinalTemporalEventType",
+      "SpecificCharacterSet",
+      "PhysiciansOfRecord",
+      "ResponsiblePerson",
+      "ResponsiblePersonRole",
+      "ScheduledProcedureStepStartDate",
+      "ScheduledProcedureStepStartTime",
+      "ScheduledProcedureStepEndDate",
+      "ScheduledProcedureStepEndTime",
+      "PerformedProcedureStepStartDate",
+      "PerformedProcedureStepStartTime",
+      "PerformedProcedureStepEndDate",
+      "PerformedProcedureStepEndTime"
+    ],
+    "Patient": [
+    ]
+  },
+  "PrivateMainDicomTags": {
+    "Patient": [
+      "VisionairePatientIDSource"
+    ],
+    "Study": [
+      "VisionaireResponsiblePersonID",
+      "VisionaireResponsiblePersonEmail",
+      "VisionaireResponsiblePersonAddress",
+      "VisionaireClinicalTrialSiteAddress"
+    ],
+    "Series": [
+      "VisionairePlanRevision"
+    ]
+  },
+  "DicomExtDatetime": {
+    "Study": [
+      "PerformedProcedureStepStartDate,PerformedProcedureStepStartTime",
+      "PerformedProcedureStepEndDate,PerformedProcedureStepEndTime",
+      "ScheduledProcedureStepStartDate,ScheduledProcedureStepStartTime",
+      "ScheduledProcedureStepEndDate,ScheduledProcedureStepEndTime"
+    ]
+  },
+  "Housekeeper": {
+    "Enable": true,
+    "GlobalPropertyId": 2025,
+    "Force": false,
+    "ThrottleDelay": 1,
+    "Triggers" : {
+      "StorageCompressionChange": true,
+      "MainDicomTagsChange": true,
+      "UnnecessaryDicomAsJsonFiles": true,
+      "IngestTranscodingChange": true
+    }
   }
 }

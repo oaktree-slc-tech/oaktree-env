@@ -10,7 +10,7 @@
 # AIRFLOW_UID                - User ID in Airflow containers
 #                              Default: 50000
 # AIRFLOW_GID                - Group ID in Airflow containers
-#                              Default: 50000
+#                              Default: 0
 # _AIRFLOW_WWW_USER_USERNAME - Username for the administrator account.
 #                              Default: airflow
 # _AIRFLOW_WWW_USER_PASSWORD - Password for the administrator account.
@@ -25,7 +25,7 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: amqp://guest:guest@message-broker:5672
     AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
@@ -42,8 +42,8 @@ x-airflow-common:
   - ../data/airflow/dags:/opt/airflow/dags
   - ../data/airflow/logs:/opt/airflow/logs
   - ../data/airflow/plugins:/opt/airflow/plugins
-  - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.8/site-packages/sonador_auth.py:ro
-  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
+  - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py:ro
+  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
   depends_on:
   - airflow-postgres
 
@@ -51,7 +51,7 @@ x-airflow-common:
 services:
 
   airflow-postgres:
-    image: postgres:13
+    image: postgres:16
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -103,7 +103,7 @@ services:
     command: version
     environment:
       <<: *airflow-common-env
-      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
