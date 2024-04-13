@@ -3,7 +3,7 @@ services:
 
   # Sonador PostgreSQL instance
   sonador-db:
-    image: postgres:11
+    image: postgres:16
     volumes:
     - sonador-postgres:/var/lib/postgresql/data/pgdata
     environment:
@@ -33,13 +33,6 @@ services:
       SONADOR_USER_EMAIL: "dev01@example.com"
       SONADOR_USER_PASSWORD: "sonador@development-env"
       SECURE_API_APITOKEN: "secure-api@sonador-dev"
-    command:
-    - /bin/bash
-    - -c
-    - >
-      cd /srv/www/sonador/sonador
-      && python3 manage.py imaging-env-init
-      && apachectl -D FOREGROUND
 
 volumes:
   sonador-postgres:
