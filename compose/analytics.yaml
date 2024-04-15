@@ -2,7 +2,7 @@ version: "2.1"
 services:
   
   jupyter:
-    image: oaktreetech/root.itk:2022-0516 
+    image: oaktreetech/root.3d 
     volumes:
     - ../local:/home/jovyan/work/
     - ../.local:/home/jovyan/
