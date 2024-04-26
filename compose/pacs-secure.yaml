@@ -31,7 +31,7 @@ services:
     volumes:
     - ../config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
     - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
-    # - ../src/orthanc-sonador:/opt/orthanc/orthanc-sonador
+    - ../src/orthanc-sonador:/opt/orthanc/orthanc-sonador
     environment:
       POSTGRESQL_PLUGIN_ENABLED: "true"
       PYTHON_PLUGIN_ENABLED: "true"

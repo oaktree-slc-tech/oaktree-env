@@ -12,12 +12,12 @@ services:
   
   # Sonador Web Application
   imaging:
-    image: oaktreetech/sonador:latest
+    image: oaktreetech/sonador:0.4-alpha1
     ports:
     - 8070:8070
     volumes:
     - ../config/sonador:/srv/www/sonador/config
-    # - ../src/sonador:/srv/www/sonador/sonador
+    - ../src/sonador:/srv/www/sonador/sonador
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
       DJANGO_SETTINGS_MODULE: "sonador.settings"
@@ -36,7 +36,9 @@ services:
     - /bin/bash
     - -c
     - >
-      sleep 20
-      && cd /srv/www/sonador/sonador
-      && python3 manage.py imaging-env-init
+      cd /srv/www/sonador/sonador
       && uvicorn sonador.asgi:application --port 8070 --host 0.0.0.0
+    #  sleep 20
+    #  
+    #  && python3 manage.py imaging-env-init
+    
