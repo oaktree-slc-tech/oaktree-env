@@ -12,7 +12,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
 
   orthanc-init-db:
-    image: oaktreetech/orthanc-sonador
+    image: oaktreetech/orthanc-sonador:0.4-alpha3
     volumes:
     - ../config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
     - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
@@ -24,7 +24,7 @@ services:
     - cd /opt/orthanc/orthanc-sonador && sleep 7 && alembic upgrade head
 
   orthanc:
-    image: oaktreetech/orthanc-sonador:0.3-beta4
+    image: oaktreetech/orthanc-sonador:0.4-alpha4
     ports:
     - 4242:4242
     - 8042:8042
@@ -38,7 +38,7 @@ services:
       DICOM_WEB_PLUGIN_ENABLED: "true"
       AWS_S3_STORAGE_PLUGIN_ENABLED: "false"
       OHIF_PLUGIN_ENABLED: "true"
-      AUTHORIZATION_PLUGIN_ENABLED: "false"
+      AUTHORIZATION_PLUGIN_ENABLED: "true"
     depends_on:
       orthanc-db:
         condition: service_started

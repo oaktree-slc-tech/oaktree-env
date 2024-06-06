@@ -3,7 +3,7 @@ curl -i -X PUT -H "Accept:application/json" \
     -d '
  {
 	"connector.class": "io.confluent.connect.s3.S3SinkConnector",
-	"key.converter": "org.apache.kafka.connect.storage.StringConverter",
+	"key.converter": "org.apache.kafka.connect.json.JsonConverter",
 	"value.converter": "org.apache.kafka.connect.json.JsonConverter",
 	"value.converter.schemas.enable": "false",
 	"tasks.max": "1",
@@ -13,14 +13,9 @@ curl -i -X PUT -H "Accept:application/json" \
 	"flush.size": "3",
 	"storage.class": "io.confluent.connect.s3.storage.S3Storage",
 	"format.class": "io.confluent.connect.s3.format.json.JsonFormat",
-	"schema.generator.class": "io.confluent.connect.storage.hive.schema.DefaultSchemaGenerator",
-	"schema.compatibility": "NONE",
-	"partitioner.class": "io.confluent.connect.storage.partitioner.DefaultPartitioner",
-	"transforms": "AddMetadata",
-	"transforms.AddMetadata.type": "org.apache.kafka.connect.transforms.InsertField$Value",
-	"transforms.AddMetadata.offset.field": "_offset",
-	"transforms.AddMetadata.partition.field": "_partition",
-	"s3.endpoint": "http://127.0.0.1:9000",
-	"aws.access.key.id": "connect",
-	"aws.secret.access.key": "BuC2IHO4f8L4jFg3oYUVUuwLd9beTTClOstLbIyt"
+	"s3.endpoint": "http://object-storage:9000",
+	"store.url": "http://object-storage:9000",
+	"confluent.topic.bootstrap.servers": "kafka:29092",
+    "aws.access.key.id": "jupyter",
+    "aws.secret.access.key": "jupyter@analytics"
 }'
