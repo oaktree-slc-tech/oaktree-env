@@ -81,6 +81,7 @@ services:
     volumes:
       - ../data/kafka/connectors:/connectors
       - ../config/kafka/aws_credentials:/root/.aws/credentials
+    # TODO we need to run the s3-sink-connect-cmd.sh thats in /config/kafka after kafka-connect is ran
     command: 
       - bash 
       - -c 
