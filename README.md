@@ -1,24 +1,34 @@
-# Oak-Tree Imaging Development Environment
-This repository contains configuration, development, and deployment resources for the Oak-Tree medical imaging technical stack. Oak-Tree uses the following components for research and visualization projects:
+# Oak-Tree Development Environment
+This repository contains configuration, development, and deployment resources to support the development of the Oak-Tree technical systems. It provides a set of container images designed to provide a development environment for [data systems](https://www.oak-tree.tech/blog/big-data-lab-environment) and [MedTech applications](https://sonador.oak-tree.tech) applications.
 
-* MinIO: S3 compatible storage
-* PostgreSQL: Highly performant and scalable storage for imaging metadata
-* Orthanc: light-weight and extensible PACS server which provides a REST and DICOMweb interface for medical image management.
-	- S3 Storage Plugin
+* **[MinIO](https://min.io/)**: S3 compatible storage
+* **[PostgreSQL](https://www.postgresql.org/)**: Highly performant and scalable storage for relational data
+* **[Orthanc](https://www.orthanc-server.com/)**: light-weight and extensible PACS server which provides a REST and DICOMweb interface for medical image management.
+	- [S3 Storage Plugin](https://code.oak-tree.tech/oak-tree/medical-imaging/orthanc-s3)
 	- PostgreSQL Plugin
-	- (optional) Advanced Authentication Plugin
-* Kafka: a distributed streaming platform
-* RabbitMQ: an AMQP messaging broker and its management console
-* etcd: distributed key-value store used by cluster computing systems to manage and coordinate state
-* Sonador: open source cloud platform for medical imaging visualization and research
+	- (optional) [Advanced Authentication Plugin](https://orthanc.uclouvain.be/book/plugins/authorization.html)
+* **[Kafka](https://kafka.apache.org/)**: a distributed streaming platform
+* [RabbitMQ](https://www.rabbitmq.com/): an AMQP messaging broker and its management console
+* [etcd](https://etcd.io/): distributed key-value store used by cluster computing systems to manage and coordinate state
+* **[Sonador](https://sonador.oak-tree.tech)**: open source cloud platform for medical imaging visualization and research
 	- OHIF: extensible DICOM viewer platform written in JavaScript
-* Airflow: open source ETL platform for managing data
+* **[Airflow](https://airflow.apache.org/)**: open source ETL platform for managing data
 
 Repository contents:
 
 * Docker Compose manifests that can be used to deploy some (or all) of the components for a development environment can be found with the `compose` folder. 
 * Kubernetes manifests that are appropriate for the deploymenmt of the pieces to staging or production clusters can be found in the `k8s` folder.
 * Sample configuration for Orthanc, Sonador, Airflow, and NGINX are available in the `config` folder. _Note: This environment includes CORS options for Sonador and NGINX._
+
+<img src="https://d33idl3etu5qjr.cloudfront.net/acorn/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="100%" />
+
+
+## Getting Started
+A tutorial which describes the capabilities of the environment, architecture, and how to get started with general "data" development as well as more specific "medical imaging" configurations are available from the [Oak-Tree website](https://www.oak-tree.tech/blog).
+
+* [Part 1: A Docker Based Lab for Data Development](https://www.oak-tree.tech/blog/big-data-lab-environment). Introduces the components of the environment, and how it is able to support the development of data driven applications.
+* [Part 2: Hello Kafka](https://www.oak-tree.tech/blog/big-data-kafka). Introduces Kafka and how to interface with it from the JupyterLab application.
+* [Part 3: First Steps with JupyterLab](https://www.oak-tree.tech/blog/first-steps-jupyter). Showcases the capabilities of JupyterLab and describes how it can be used within the Oak-Tree environment to interact with other services in the environment.
 
 
 ### Docker Compose Manifests
@@ -31,8 +41,6 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 * `airflow-etl.yaml`. Airflow with Sonador/Orthanc client libraries installed. _Requires `message-broker.yaml`, `core.yaml`, and `pacs-secure.yaml` to be active. Username/password for environment is `airflow:airflow`._
   - `airflow-etl.gitlab-sso.yaml`: specialized Airflow configuration with dependencies needed to support GitLab as an SSO Identity Provider. _Refer to notes below for configuration instructions and to ["Using GitLab as an Identity Provider for Apache Airflow 2"](https://www.oak-tree.tech/blog/k8s-airflow-oauth2-gitlab) for implementation details._
 * `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
-
-**Important**: `pacs.yaml` and `pacs-secure.yaml` cannot be used at the same time as they will cause port and hostname conflicts.
 
 #### DNS
 The following lines need to be added to the `/etc/hosts` file of the development machine to allow for traffic to resolve to the correct containers:
