@@ -14,13 +14,13 @@ This repository contains configuration, development, and deployment resources to
 	- OHIF: extensible DICOM viewer platform written in JavaScript
 * **[Airflow](https://airflow.apache.org/)**: open source ETL platform for managing data
 
+<img src="https://d33idl3etu5qjr.cloudfront.net/acorn/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="50%" align="right" />
+
 Repository contents:
 
 * Docker Compose manifests that can be used to deploy some (or all) of the components for a development environment can be found with the `compose` folder. 
 * Kubernetes manifests that are appropriate for the deploymenmt of the pieces to staging or production clusters can be found in the `k8s` folder.
 * Sample configuration for Orthanc, Sonador, Airflow, and NGINX are available in the `config` folder. _Note: This environment includes CORS options for Sonador and NGINX._
-
-<img src="https://d33idl3etu5qjr.cloudfront.net/acorn/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="100%" />
 
 
 ## Getting Started
