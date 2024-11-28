@@ -22,9 +22,7 @@ Repository contents:
 * Kubernetes manifests that are appropriate for the deploymenmt of the pieces to staging or production clusters can be found in the `k8s` folder.
 * Sample configuration for Orthanc, Sonador, Airflow, and NGINX are available in the `config` folder. _Note: This environment includes CORS options for Sonador and NGINX._
 
-
-## Getting Started
-A tutorial which describes the capabilities of the environment, architecture, and how to get started with general "data" development as well as more specific "medical imaging" configurations are available from the [Oak-Tree website](https://www.oak-tree.tech/blog).
+**Getting Started Tutorial.** A tutorial which describes the capabilities of the environment, architecture, and how to get started with general "data" development as well as more specific "medical imaging" configurations are available from the [Oak-Tree website](https://www.oak-tree.tech/blog).
 
 * [Part 1: A Docker Based Lab for Data Development](https://www.oak-tree.tech/blog/big-data-lab-environment). Introduces the components of the environment, and how it is able to support the development of data driven applications.
 * [Part 2: Hello Kafka](https://www.oak-tree.tech/blog/big-data-kafka). Introduces Kafka and how to interface with it from the JupyterLab application.
