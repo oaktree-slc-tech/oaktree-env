@@ -1,6 +1,8 @@
 # Oak-Tree Development Environment
 This repository contains configuration, development, and deployment resources to support the development of the Oak-Tree technical systems. It provides a set of container images designed to provide a development environment for [data systems](https://www.oak-tree.tech/blog/big-data-lab-environment) and [MedTech applications](https://sonador.oak-tree.tech) applications.
 
+<img src="https://d33idl3etu5qjr.cloudfront.net/acorn/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="50%" align="right" />
+
 * **[MinIO](https://min.io/)**: S3 compatible storage
 * **[PostgreSQL](https://www.postgresql.org/)**: Highly performant and scalable storage for relational data
 * **[Orthanc](https://www.orthanc-server.com/)**: light-weight and extensible PACS server which provides a REST and DICOMweb interface for medical image management.
@@ -13,8 +15,6 @@ This repository contains configuration, development, and deployment resources to
 * **[Sonador](https://sonador.oak-tree.tech)**: open source cloud platform for medical imaging visualization and research
 	- OHIF: extensible DICOM viewer platform written in JavaScript
 * **[Airflow](https://airflow.apache.org/)**: open source ETL platform for managing data
-
-<img src="https://d33idl3etu5qjr.cloudfront.net/acorn/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="50%" align="right" />
 
 Repository contents:
 
