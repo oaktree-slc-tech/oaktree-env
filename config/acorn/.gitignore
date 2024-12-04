@@ -1,0 +1,9 @@
+dbmigrations/comments/*.py
+dbmigrations/flexforms/*.py
+dbmigrations/hooks/*.py
+dbmigrations/oaknut/*.py
+dbmigrations/secure/*.py
+dbmigrations/wgtauth/registration/*.py
+dbmigrations/wgtauth/social/*.py
+dbmigrations/wgtbase/*.py
+dbmigrations/wgtcontent/*.py
