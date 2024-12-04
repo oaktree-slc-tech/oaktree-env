@@ -1,0 +1,32 @@
+version: "2.1"
+services: 
+
+  acorn-db:
+    image: postgres:16
+    volumes:
+    - acorn-postgres:/var/lib/postgresql/data/pgdata
+    environment:
+      POSTGRES_PASSWORD: web-control@acorn
+      POSTGRES_USER: postgres
+      POSTGRES_DB: acorn
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  acorn:
+    image: acorn:wagtail4-upgrade
+    ports:
+    - 8080:8080
+    environment:
+      ACORN_SITECONFIG: "/srv/www/acorn/config/acorn.site.config"
+      DJANGO_SETTINGS_MODULE: "acorn.settings.production"
+    volumes:
+    - ../config/acorn:/srv/www/acorn/config
+    command:
+    - /usr/bin/python3
+    - /srv/www/acorn/acorn/manage.py
+    - runserver
+    - 0.0.0.0:8080
+    depends_on:
+    - acorn-db
+
+volumes:
+  acorn-postgres:
