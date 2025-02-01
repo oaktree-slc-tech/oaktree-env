@@ -61,6 +61,9 @@ Data infrastructure (ETL):
   - Requires: `core.yaml`, `message-broker.yaml`, `pacs-secure.yaml`
   - `airflow-etl.gitlab-sso.yaml`: specialized Airflow configuration with dependencies needed to support GitLab as an SSO Identity Provider. _Refer to notes below for configuration instructions and to ["Using GitLab as an Identity Provider for Apache Airflow 2"](https://www.oak-tree.tech/blog/k8s-airflow-oauth2-gitlab) for implementation details._
   - _Username/password for environment is `airflow:airflow`._
+* `airflow-ai.yaml`. Airflow with Sonador/Orthanc client libraries and [Total Segmentator](https://github.com/wasserth/TotalSegmentator) (an open source solution which supports full body segmentation) installed.
+  - Requires: `core.yaml`, `message-broker.yaml`, `pacs-secure.yaml`
+  - When running Total Segmentator pipelines, at least 6GB of system RAM is required. Under the default configuration, Total Segmentator is configured to use CPU inference.
 
 
 ### Quickstart
