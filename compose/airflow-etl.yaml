@@ -31,7 +31,7 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__API__AUTH_BACKEND: 'sonador_auth'
+    AIRFLOW__API__AUTH_BACKENDS: 'sonador_auth'
     _AIRFLOW_WWW_USER_USERNAME: 'dev01'
     _AIRFLOW_WWW_USER_PASSWORD: 'sonador@development-env'
     SONADOR_URL: "http://imaging:8070"
@@ -39,10 +39,13 @@ x-airflow-common:
     SONADOR_SERVICE_CLIENT_ID: 'airflow'
 
   volumes:
-  - ../data/airflow/dags:/opt/airflow/dags
+  - ../data/airflow/dags/io:/opt/airflow/dags/sonador
   - ../data/airflow/logs:/opt/airflow/logs
   - ../data/airflow/plugins:/opt/airflow/plugins
   - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py:ro
+  - ../docker/airflow/airflow-api.sonador_hook.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py:ro
+  - ../docker/airflow/airflow-api.object_storage_hook.py:/home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py:ro  
+  
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
   depends_on:
   - airflow-postgres
