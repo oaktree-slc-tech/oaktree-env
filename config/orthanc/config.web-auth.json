@@ -44,8 +44,14 @@
     "QidoCaseSensitive": false
   },
   "Authorization": {
-    "WebService": "http://imaging:8070/auth/service/orthanc/dev01/introspect",
-    "TokenHttpHeaders" : [ "Authorization", "Referer" ],
+    "WebServiceIdentifier": "orthanc-dev",
+    "WebServiceUsername": "dev01",
+    "WebServicePassword": "secure-api@sonador-dev",
+    "WebServiceTokenValidationUrl": "http://imaging:8070/auth/service/orthanc/dev01/introspect",
+    "WebServiceUserProfileUrl": "http://imaging:8070/auth/service/orthanc/dev01/user-profile",
+    "WebServiceTokenDecoderUrl": "http://imaging:8070/auth/service/orthanc/dev01/token-decode",
+    "WebServiceTokenCreationBaseUrl" : "http://imaging:8070/auth/service/orthanc/dev01/token-generate/",
+    "TokenHttpHeaders": [ "Referer", "Authorization"],
     "TokenGetArguments": ["api-auth", "api-token", "token", "authorization"]
   },
   "Sonador": {
