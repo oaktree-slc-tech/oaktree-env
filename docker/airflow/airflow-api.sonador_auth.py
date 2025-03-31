@@ -18,7 +18,9 @@ from functools import wraps
 from typing import Any, Callable, Optional, Tuple, TypeVar, Union, cast
 
 from flask import Response, current_app, request
-from airflow.auth.managers.fab.models import User
+
+from airflow.www.security import AirflowSecurityManager
+
 from flask_login import login_user
 
 from client.utils.urls import validate_url
@@ -67,7 +69,7 @@ def init_app(*args, **kwargs):
 T = TypeVar('T', bound=Callable)
 
 
-def auth_current_user() -> Optional[User]:
+def auth_current_user():
     ''' Check authentication credentials for the provided
     '''
     auth = request.authorization

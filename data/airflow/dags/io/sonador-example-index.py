@@ -10,6 +10,7 @@ from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.models import Variable
+from airflow.models.param import Param
 
 from client.utils.conversion import str2bool
 from client.utils.object import pick
@@ -20,6 +21,8 @@ from sonador.servers import SonadorServer
 from sonador.apisettings import DCM_EXTENSIONS_DEFAULT, IMAGING_SERVER_RESOURCE_SERIES
 from sonador.tasks.uploads import imageserver_upload_archive
 
+from sonador_hook import SonadorHook
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,43 +30,18 @@ DCM_FPATTERNS = [re.compile(fnmatch.translate(p)) for p in DCM_EXTENSIONS_DEFAUL
 ARCHIVE_URL_DEFAULT =  'https://oak-tree.tech/documents/156/example.lung-ct.volume-3d.zip'
 
 
-def init_sonador_imageserver(sonador_url, sonador_apitoken, imageserver, internal_dns=True):
-	'''	Initialize the Sonador connection and image server instance
-
-		@returns SonadorImagingServer instance
-	'''
-	sconn = SonadorServer(sonador_url, None, None, sonador_apitoken, internal_dns=internal_dns)
-	return sconn.get_imageserver(imageserver)
-
-
-def sonador_serverargs():
-	'''	Retrieve Sonador configuration from AriFlow
-	'''
-	sonador_url = Variable.get(SONADOR_URL)
-	sonador_apitoken = Variable.get(SONADOR_APITOKEN)
-	imageserver = Variable.get(SONADOR_IMAGING_SERVER)
-	internal_dns = str2bool(Variable.get(SONADOR_INTERNAL_DNS, True))
-
-	return sonador_url, sonador_apitoken, imageserver, internal_dns
-
-
 def verify_etl_env(**kwargs):
 	'''	Log the command context to stderr
 	'''
-	sonador_url, sonador_apitoken, imageserver, internal_dns = sonador_serverargs()
-
-	if not sonador_url or not sonador_apitoken or not imageserver:
-		logger.error('Invalid Sonador configuration.\nURL: %s\nAPI Token: %s\nImage Server: %s' 
-			% (sonador_url, sonador_apitoken, imageserver))
-		raise ValueError('Invalid Sonador configuration. Please provide valid URL, API token, and image server ID.')
-
-	iserver = init_sonador_imageserver(sonador_url, sonador_apitoken, imageserver, internal_dns=internal_dns)
+	hook = SonadorHook(**SonadorHook.hook_options(**kwargs))
+	hook.verify_etl_env()
+	iserver = hook.init_sonador_imageserver()
 
 
 def sonador_index_imagearchive(**kwargs):
 	'''	Download and index an image archive file
 	'''
-	iserver = init_sonador_imageserver(*sonador_serverargs())
+	iserver = SonadorHook(**SonadorHook.hook_options(**kwargs)).init_sonador_imageserver()
 
 	# Retrieve ZIP archive from website
 	ctzip = zipfile.ZipFile(
@@ -81,7 +59,7 @@ def sonador_index_imagearchive(**kwargs):
 def sonador_validate_indexop(**context):
 	'''	Verify that images from the previous step were indexed correctly
 	'''
-	iserver = init_sonador_imageserver(*sonador_serverargs())
+	iserver = SonadorHook(**SonadorHook.hook_options(**context)).init_sonador_imageserver()
 	ti = context['ti']
 
 	# Retrieve upload results from indexing operation
@@ -111,7 +89,7 @@ def sonador_validate_indexop(**context):
 def sonador_remove_series(**context):
 	'''	Remove images indexed by the pipeline
 	'''
-	iserver = init_sonador_imageserver(*sonador_serverargs())
+	iserver = SonadorHook(**SonadorHook.hook_options(**context)).init_sonador_imageserver()
 	ti = context['ti']
 
 	series_validated = ti.xcom_pull(task_ids='example02-validate-indexop') or []
@@ -135,8 +113,15 @@ default_arguments = {
 }
 
 
+# Retrieve available connections from the database
+available_sonador_connections = SonadorHook.available_connections()
+
+
 # Initialize SonadorExampleIndex DAG
-dag = DAG('SonadorExample02-Index', default_args=default_arguments)
+dag = DAG('SonadorExample02-Index', default_args=default_arguments, params={
+		'conn_id': Param(type='string', enum=available_sonador_connections, 
+			default=available_sonador_connections[0] if available_sonador_connections else None),
+	})
 
 
 # Define task steps

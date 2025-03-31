@@ -10,18 +10,18 @@
 # AIRFLOW_UID                - User ID in Airflow containers
 #                              Default: 50000
 # AIRFLOW_GID                - Group ID in Airflow containers
-#                              Default: 0
+#                              Default: 50000
 # _AIRFLOW_WWW_USER_USERNAME - Username for the administrator account.
 #                              Default: airflow
 # _AIRFLOW_WWW_USER_PASSWORD - Password for the administrator account.
 #                              Default: airflow
 #
 ---
-version: '3.8'
+version: '2.3'
 
 x-airflow-common:
   &airflow-common
-  image: oaktreetech/sonador-airflow
+  image: oaktreetech/sonador-airflow.ai
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -37,15 +37,31 @@ x-airflow-common:
     SONADOR_URL: "http://imaging:8070"
     SONADOR_APITOKEN: "secure-api@sonador-dev"
     SONADOR_SERVICE_CLIENT_ID: 'airflow'
+    AIRFLOW__LOGGING__REMOTE_LOGGING: "true"
+    AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
+    AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: s3_default
+    AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
 
   volumes:
+  # Volumnes include a runtime for the main Airflow installation (under /home/aiflow/.local)
+  # as well as a second virtual environment for Total Segmentator located at /home/airflow/env/totalsegmentator.
   - ../data/airflow/dags/io:/opt/airflow/dags/sonador
+  - ../data/airflow/dags/ai:/opt/airflow/dags/ai
   - ../data/airflow/logs:/opt/airflow/logs
   - ../data/airflow/plugins:/opt/airflow/plugins
+
+  # Sonador authentication and hooks (main env)
   - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py:ro
   - ../docker/airflow/airflow-api.sonador_hook.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py:ro
   - ../docker/airflow/airflow-api.object_storage_hook.py:/home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py:ro  
-  
+
+  # Total Segmentator env
+  - ../data/totalsegmentator:/home/airflow/.totalsegmentator  
+  - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/env/totalsegmentator/lib/python3.10/site-packages/sonador_auth.py:ro
+  - ../docker/airflow/airflow-api.sonador_hook.py:/home/airflow/env/totalsegmentator/lib/python3.10/site-packages/sonador_hook.py:ro
+  - ../docker/airflow/airflow-api.object_storage_hook.py:/home/airflow/env/totalsegmentator/lib/python3.10/site-packages/object_storage_hook.py:ro
+  - ../docker/airflow/airflow-totalsegmentator.execute.py:/home/airflow/env/totalsegmentator/bin/airflow-totalsegmentator.execute.py:ro
+
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
   depends_on:
   - airflow-postgres
@@ -100,6 +116,15 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+    environment:
+      <<: *airflow-common-env      
+    deploy:
+      resources:
+        limits: 
+          memory: 16G
+
+    # Increase shared memory to allow worker to support segmentation tasks
+    shm_size: 8gb
 
   airflow-init:
     <<: *airflow-common
@@ -107,6 +132,7 @@ services:
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_DB_UPGRADE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}

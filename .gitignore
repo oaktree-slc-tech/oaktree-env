@@ -5,3 +5,7 @@ data/minio/images
 data/minio/playground
 config/sonador/dbmigrations/*
 config/sonador/sonador.db
+compose/visionaire.*.yaml
+__pycache__
+data/airflow/logs/*
+data/totalsegmentator/*
