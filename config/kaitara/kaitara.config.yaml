@@ -1,0 +1,41 @@
+Site-Config:
+  SITE_ID: 0
+  SITE_NAME: Spatial Imaging Kaitura
+  SITE_URL: http://kaitura:8050
+  SECRET_KEY: hWB4YTdjFtYLnK+j7c09KCOUeYUoPtPWFiE+NG0st/FsHSeZfqcXNjy5XEzo9A26AhSEPjqGVBOJjD+pIgTEdM1WuOVsNAp44Uda6eFUGhviOnu93o+LL3lMKq20YcTh8JlsyMq4VocYZi3FF9FphlZSX2dja2u2NyJFyEm/5+A=
+  INTERNAL_IPS:
+  - 127.0.0.1
+  VERIFY_SSL_CONNECTIONS: true
+  SASS_SCSS_DART_BINARY: /home/kostiamakh/.nvm/versions/node/v18.18.2/bin/sass
+  ALLOWED_HOSTS:
+  - localhost
+  - "*"
+
+environment:
+  DJANGO_SETTINGS_MODULE: "kaitara.settings"
+  KAITARA_SITECONFIG: "/srv/www/kaitara/config/kaitara.config.yaml"
+
+Databases:
+  default:
+    ENGINE: django.db.backends.sqlite3
+    NAME: ./db1.sqlite3
+
+Search:
+  WAGTAILSEARCH_BACKENDS:
+    default:
+      BACKEND: wagtail.search.backends.database
+
+Database-Migrations:
+#  wgtauth: "dbmigrations.wgtauth"
+  wgtbase: "dbmigrations.wgtbase"
+  wgcontent: "dbmigrations.wgtcontent"
+  secure: "dbmigrations.secure"
+  wgtsocial: "dbmigrations.wgtauth.social"
+  wgtregistration: "dbmigrations.wgtauth.registration"
+#  flexforms: "dbmigrations.flexforms"
+#  comments: "dbmigrations.comments"
+#  hooks: "dbmigrations.hooks"
+
+Resource-Files:
+  STATIC_ROOT: '/srv/www/kaitara/docroot/static'
+  MEDIA_ROOT: '/srv/www/kaitara/docroot/media'
