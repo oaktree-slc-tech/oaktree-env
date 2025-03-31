@@ -24,6 +24,7 @@ services:
       DJANGO_SETTINGS_MODULE: "acorn.settings.production"
     volumes:
       - ../config/acorn:/srv/www/acorn/config
+
     command:
     - /usr/bin/python3
     - /srv/www/acorn/acorn/uvicorn-acorn.py
