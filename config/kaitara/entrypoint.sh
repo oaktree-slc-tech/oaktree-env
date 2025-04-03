@@ -1,7 +1,4 @@
 #!/bin/bash
-echo "🛠 Making migrations wgtauth"
-python3 manage.py makemigrations wgtauth
-python3 manage.py migrate wgtauth
 
 echo "🛠 Making migrations wgtbase"
 python3 manage.py makemigrations wgtbase
