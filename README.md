@@ -1,7 +1,7 @@
 # Oak-Tree Development Environment
 This repository contains configuration, integration, and deployment resources to support the development of Oak-Tree technical systems including Acorn, Root, and [Sonador](https://sonador.oak-tree.tech). It provides a set of integrated container images showing how the technologies work together and are able to provide a development environment for [data systems](https://www.oak-tree.tech/blog/big-data-lab-environment) and [MedTech applications](https://sonador.oak-tree.tech).
 
-<img src="https://d33idl3etu5qjr.cloudfront.net/acorn/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="50%" align="right" />
+<img src="https://s3.us-east-005.dream.io/acorn8/documents/sonador.platform-components-long.svg" alt="Oak-Tree development environment." width="50%" align="right" />
 
 #### Technologies
 
