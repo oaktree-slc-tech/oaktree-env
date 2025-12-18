@@ -33,6 +33,9 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
 
+    # Airflow 3.0: JWT secret for internal API authentication (must be same across all services)
+    AIRFLOW__API_AUTH__JWT_SECRET: 'sonador-airflow-jwt-secret-key-for-dev-environment-only'
+
     # Airflow 3.0: Execution API Server URL for inter-service communication
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
 
@@ -51,19 +54,19 @@ x-airflow-common:
     SONADOR_CONNECTIONS: "sonador_default"
     S3_CONNECTIONS: "s3_default"
 
-    # Remote Logging
-    AIRFLOW__LOGGING__REMOTE_LOGGING: "true"
-    AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
-    AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: s3_default
-    AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
+    # Remote Logging (disabled for local development)
+    AIRFLOW__LOGGING__REMOTE_LOGGING: "false"
+    # AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
+    # AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: s3_default
+    # AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
 
     # Docker Model Runner LLM Integration (Docker Desktop built-in)
-    # Access from containers: http://model-runner.docker.internal/
-    # OpenAI-compatible API: /engines/llama.cpp/v1/chat/completions
+    # From containers: http://model-runner.docker.internal/
+    # From host (TCP): http://localhost:12434/
     OPENAI_API_BASE: "http://model-runner.docker.internal/engines/llama.cpp/v1"
     OPENAI_API_KEY: "not-needed"
-    LLM_MODEL: "ai/llama3.2:3B-Q8_0"
-    EMBED_MODEL: "ai/mxbai-embed-large"
+    LLM_MODEL: "ai/llama3.2:3B-Q4_0"
+    EMBED_MODEL: "ai/mxbai-embed-large:latest"
 
   volumes:
   # Volumnes include a runtime for the main Airflow installation (under /home/aiflow/.local)
@@ -86,6 +89,8 @@ x-airflow-common:
   - ../docker/airflow/airflow-totalsegmentator.execute.py:/home/airflow/env/totalsegmentator/bin/airflow-totalsegmentator.execute.py:ro
 
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+  extra_hosts:
+  - "host.docker.internal:host-gateway"
   depends_on:
   - airflow-postgres
 
