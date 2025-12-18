@@ -8,7 +8,6 @@ from collections import namedtuple
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator, ExternalPythonOperator
-from airflow.utils.dates import days_ago
 from airflow.models import Variable
 from airflow.models.param import Param
 
@@ -263,14 +262,14 @@ available_storage_connections = object_storage_connections()
 default_args = {
 	'owner': 'sonador',
 	'depends_on_past': False,
-	'starts_date': days_ago(1),
+	'start_date': datetime(2024, 1, 1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
 
 
 # Initialize TotalSegmentator DAG
-dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule_interval=None, params={
+dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule=None, params={
 
 	# Sonador and S3 connections
 	'conn_id': Param(type='string', enum=available_sonador_connections, 

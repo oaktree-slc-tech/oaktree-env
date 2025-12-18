@@ -6,9 +6,8 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 from airflow import DAG
-from airflow.operators.bash_operator import BashOperator
-from airflow.operators.python_operator import PythonOperator
-from airflow.utils.dates import days_ago
+from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from airflow.models.param import Param
 
@@ -106,8 +105,8 @@ def sonador_remove_series(**context):
 # Default arguments
 default_arguments = {
 	'owner': 'sonador',
-	'dependes_on_past': False,
-	'start_date': days_ago(1),
+	'depends_on_past': False,
+	'start_date': datetime(2024, 1, 1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
@@ -129,9 +128,9 @@ l0 = PythonOperator(task_id='example02-verify-env', python_callable=verify_etl_e
 t1 = PythonOperator(task_id='example02-index-imagearchive', python_callable=sonador_index_imagearchive, dag=dag,
 	depends_on_past=True, retries=2)
 t2 = PythonOperator(task_id='example02-validate-indexop', python_callable=sonador_validate_indexop, dag=dag,
-	depends_on_past=True, provide_context=True)
+	depends_on_past=True)
 t3 = PythonOperator(task_id='example02-remove-series', python_callable=sonador_remove_series, dag=dag,
-	depends_on_past=True, provide_context=True)
+	depends_on_past=True)
 
 
 # Order tasks

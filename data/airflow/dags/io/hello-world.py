@@ -5,15 +5,14 @@
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.operators.bash_operator import BashOperator
-from airflow.utils.dates import days_ago
+from airflow.operators.bash import BashOperator
 
 
 # Default arguments
 default_args = {
 	'owner': 'sonador',
 	'depends_on_past': False,
-	'start_date': days_ago(1),
+	'start_date': datetime(2024, 1, 1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
