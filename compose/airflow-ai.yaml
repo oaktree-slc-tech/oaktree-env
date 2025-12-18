@@ -1,29 +1,30 @@
-# Basic Airflow cluster configuration for CeleryExecutor with RabbitMQ and PostgreSQL.
+# Airflow 3.0 cluster configuration for CeleryExecutor with RabbitMQ and PostgreSQL.
 #
 # WARNING: This configuration is for local development. Do not use it in a production deployment.
 #
-# This configuration supports basic configuration using environment variables or an .env file
-# The following variables are supported:
+# Airflow 3.0 Breaking Changes Applied:
+#   - webserver command removed -> api-server
+#   - Added dag-processor service (recommended for Airflow 3.0)
+#   - Added triggerer service for deferrable tasks
+#   - Updated health checks for new API endpoints
+#   - Added EXECUTION_API_SERVER_URL for inter-service communication
 #
-# AIRFLOW_IMAGE_NAME         - Docker image name used to run Airflow.
-#                              Default: apache/airflow:master-python3.8
-# AIRFLOW_UID                - User ID in Airflow containers
-#                              Default: 50000
-# AIRFLOW_GID                - Group ID in Airflow containers
-#                              Default: 50000
-# _AIRFLOW_WWW_USER_USERNAME - Username for the administrator account.
-#                              Default: airflow
-# _AIRFLOW_WWW_USER_PASSWORD - Password for the administrator account.
-#                              Default: airflow
+# Environment variables supported:
+#   AIRFLOW_IMAGE_NAME         - Docker image name used to run Airflow.
+#   AIRFLOW_UID                - User ID in Airflow containers (Default: 50000)
+#   AIRFLOW_GID                - Group ID in Airflow containers (Default: 0)
+#   _AIRFLOW_WWW_USER_USERNAME - Username for the administrator account.
+#   _AIRFLOW_WWW_USER_PASSWORD - Password for the administrator account.
 #
 ---
 version: '2.3'
 
 x-airflow-common:
   &airflow-common
-  image: oaktreetech/sonador-airflow.ai
+  image: registry.oak-tree.tech/oak-tree/medical-imaging/agentic-ai:airflow
   environment:
     &airflow-common-env
+    # Core Airflow Configuration
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
@@ -31,16 +32,38 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+
+    # Airflow 3.0: Execution API Server URL for inter-service communication
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+
+    # Authentication
     AIRFLOW__API__AUTH_BACKENDS: 'sonador_auth'
     _AIRFLOW_WWW_USER_USERNAME: 'dev01'
     _AIRFLOW_WWW_USER_PASSWORD: 'sonador@development-env'
+
+    # SONADOR Integration
     SONADOR_URL: "http://imaging:8070"
     SONADOR_APITOKEN: "secure-api@sonador-dev"
     SONADOR_SERVICE_CLIENT_ID: 'airflow'
+
+    # Airflow 3.0: Connection names for DAG parameter dropdowns
+    # (Database queries not allowed during DAG parsing)
+    SONADOR_CONNECTIONS: "sonador_default"
+    S3_CONNECTIONS: "s3_default"
+
+    # Remote Logging
     AIRFLOW__LOGGING__REMOTE_LOGGING: "true"
     AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
     AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: s3_default
     AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
+
+    # Docker Model Runner LLM Integration (Docker Desktop built-in)
+    # Access from containers: http://model-runner.docker.internal/
+    # OpenAI-compatible API: /engines/llama.cpp/v1/chat/completions
+    OPENAI_API_BASE: "http://model-runner.docker.internal/engines/llama.cpp/v1"
+    OPENAI_API_KEY: "not-needed"
+    LLM_MODEL: "ai/llama3.2:3B-Q8_0"
+    EMBED_MODEL: "ai/mxbai-embed-large"
 
   volumes:
   # Volumnes include a runtime for the main Airflow installation (under /home/aiflow/.local)
@@ -83,14 +106,15 @@ services:
       retries: 5
     restart: always
 
-  airflow-webserver:
+  # Airflow 3.0: webserver replaced with api-server
+  airflow-apiserver:
     <<: *airflow-common
-    command: webserver
+    command: api-server
     ports:
     - 8060:8080
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-      interval: 10s
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 30s
       timeout: 10s
       retries: 5
     restart: always
@@ -99,8 +123,30 @@ services:
     <<: *airflow-common
     command: scheduler
     healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
-      interval: 10s
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  # Airflow 3.0: DAG Processor service (parses DAG files)
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  # Airflow 3.0: Triggerer service (for deferrable tasks)
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 30s
       timeout: 10s
       retries: 5
     restart: always
@@ -111,16 +157,18 @@ services:
     healthcheck:
       test:
       - "CMD-SHELL"
-      - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
-      interval: 10s
+      - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
       timeout: 10s
       retries: 5
     restart: always
     environment:
-      <<: *airflow-common-env      
+      <<: *airflow-common-env
+      # Airflow 3.0: Required for proper signal handling in celery workers
+      DUMB_INIT_SETSID: "0"
     deploy:
       resources:
-        limits: 
+        limits:
           memory: 16G
 
     # Increase shared memory to allow worker to support segmentation tasks
@@ -148,6 +196,12 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+
+  # NOTE: LLM inference is provided by Docker Model Runner (built into Docker Desktop)
+  # No separate Ollama service needed. Enable in Docker Desktop Settings.
+  # Models are pulled automatically on first use:
+  #   docker model pull ai/llama3.2:3B-Q8_0
+  #   docker model pull ai/mxbai-embed-large
 
 volumes:
   postgres-db-volume:
