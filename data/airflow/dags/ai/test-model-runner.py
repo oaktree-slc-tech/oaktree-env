@@ -6,20 +6,21 @@ and execute LLM inference using the OpenAI-compatible API.
 
 Prerequisites:
 1. Enable Docker Model Runner in Docker Desktop Settings
-2. Pull models: docker model pull ai/llama3.2:3B-Q8_0
+2. Pull models: docker model pull ai/llama3.2:3B-Q4_0
 """
 import os
 import json
 import logging
 from datetime import datetime
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 logger = logging.getLogger(__name__)
 
 # Docker Model Runner configuration from environment
+# From containers: http://model-runner.docker.internal/
 OPENAI_API_BASE = os.environ.get('OPENAI_API_BASE', 'http://model-runner.docker.internal/engines/llama.cpp/v1')
-LLM_MODEL = os.environ.get('LLM_MODEL', 'ai/llama3.2:3B-Q8_0')
+LLM_MODEL = os.environ.get('LLM_MODEL', 'ai/llama3.2:3B-Q4_0')
 
 
 @dag(
