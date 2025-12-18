@@ -1,4 +1,4 @@
-import logging, json
+import logging, json, os
 from collections import namedtuple
 
 from airflow.hooks.base import BaseHook
@@ -35,21 +35,13 @@ class ObjectStorageHook(BaseHook):
 		self.objects_conn_root_default = kwargs.get('objects_conn_root_default', self.objects_conn_root_default)
 
 	def get_connection(self, **kwargs):
-		'''	Retrieve the storage connection
+		'''	Retrieve the storage connection using Airflow 3.0 compatible method
 		'''
-		from airflow.models.connection import Connection
-		from airflow.settings import Session
-
-		# Retrieve S3 storage connection ID
-		s3_conn = None
-
-		# Retrieve connection from the database
-		session = Session()
-		try: s3_conn = session.query(Connection).filter(Connection.conn_id == self.conn_id).first()
-		finally: session.close()
+		# Use BaseHook.get_connection which works in both Airflow 2.x and 3.x
+		s3_conn = BaseHook.get_connection(self.conn_id)
 
 		if not s3_conn:
-			raise ValueError('Unable to retrieve connection %s from databaase' % s3_conn_id)
+			raise ValueError('Unable to retrieve connection %s from database' % self.conn_id)
 
 		return s3_conn
 
@@ -90,18 +82,32 @@ class ObjectStorageHook(BaseHook):
 
 	@classmethod
 	def available_connections(cls, objects_conn_type=CONN_TYPE_S3, **kwargs):
-		'''	Retrieve a list of available Object Storage connections
+		'''	Retrieve a list of available Object Storage connections.
+
+		In Airflow 3.0, direct database access during DAG parsing is not allowed.
+		Falls back to environment variable S3_CONNECTIONS (comma-separated list)
+		or returns a default connection list.
 		'''
-		from airflow.models.connection import Connection
-		from airflow.settings import Session
+		# First try environment variable (works in all contexts)
+		env_connections = os.environ.get('S3_CONNECTIONS', '')
+		if env_connections:
+			return [c.strip() for c in env_connections.split(',') if c.strip()]
 
-		session = Session()
-
+		# Try database access (only works during task execution in Airflow 3.0)
 		try:
-			# Query Airflow database for S3 connections
-			connections = session.query(Connection).filter(Connection.conn_type==objects_conn_type)
-			return [conn.conn_id for conn in connections]
+			from airflow.models.connection import Connection
+			from airflow.settings import Session
 
-		finally:
-			session.close()
+			session = Session()
+			try:
+				connections = session.query(Connection).filter(Connection.conn_type==objects_conn_type)
+				return [conn.conn_id for conn in connections]
+			finally:
+				session.close()
+
+		except RuntimeError as e:
+			# Airflow 3.0: Direct database access not allowed during DAG parsing
+			logger.debug('Database access not available during DAG parsing: %s', e)
+			default_conn = os.environ.get('S3_DEFAULT_CONN', 's3_default')
+			return [default_conn]
 
