@@ -22,7 +22,11 @@ version: '3.0'
 
 x-airflow-common:
   &airflow-common
+<<<<<<< Updated upstream
   image: registry.oak-tree.tech/oak-tree/medical-imaging/agentic-ai:airflow
+=======
+  image: registry.oak-tree.tech/oak-tree/medical-imaging/agentic-ai
+>>>>>>> Stashed changes
   environment:
     &airflow-common-env
     # Core Airflow Configuration

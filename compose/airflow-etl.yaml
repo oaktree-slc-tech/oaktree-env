@@ -21,7 +21,7 @@ version: '3.8'
 
 x-airflow-common:
   &airflow-common
-  image: oaktreetech/sonador-airflow
+  image: airflow-ai
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor

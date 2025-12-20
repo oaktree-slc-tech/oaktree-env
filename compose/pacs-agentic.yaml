@@ -12,7 +12,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
 
   orthanc-init-db:
-    image: oaktreetech/orthanc-sonador
+    image: orthanc-agentic
     volumes:
     - ../config/orthanc/config.web-auth.json:/etc/orthanc/orthanc.json:ro
     - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
@@ -24,7 +24,7 @@ services:
     - cd /opt/orthanc/orthanc-sonador && alembic upgrade head
 
   orthanc:
-    image: oaktreetech/orthanc-sonador:latest
+    image: orthanc-agentic
     ports:
     - 4242:4242
     - 8042:8042
@@ -33,7 +33,7 @@ services:
     - ../config/orthanc/config.python.json:/etc/orthanc/orthanc-python.json:ro
     # Uncomment the line below to mount a local checkout of the Orthanc Sonador Plugin
     # sources staged in../src/orthanc-sonador to enable local development.
-    # - ../src/orthanc-sonador:/opt/orthanc/orthanc-sonador
+    - ../src/orthanc-sonador:/opt/orthanc/orthanc-sonador
     environment:
       POSTGRESQL_PLUGIN_ENABLED: "true"
       PYTHON_PLUGIN_ENABLED: "true"

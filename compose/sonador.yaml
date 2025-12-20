@@ -14,7 +14,7 @@ services:
   
   # Sonador Web Application
   imaging:
-    image: oaktreetech/sonador:latest
+    image: sonador-agentic
     ports:
     - 8070:8070
     volumes:
