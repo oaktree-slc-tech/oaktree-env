@@ -17,7 +17,7 @@
 #   _AIRFLOW_WWW_USER_PASSWORD - Password for the administrator account.
 #
 ---
-version: '2.3'
+version: '3.0'
 
 x-airflow-common:
   &airflow-common
@@ -47,18 +47,17 @@ x-airflow-common:
     # SONADOR Integration
     SONADOR_URL: "http://imaging:8070"
     SONADOR_APITOKEN: "secure-api@sonador-dev"
-    SONADOR_SERVICE_CLIENT_ID: 'airflow'
+    SONADOR_SERVICE_CLIENT_ID: 'scoaDDZzCwpMPrrx'
 
     # Airflow 3.0: Connection names for DAG parameter dropdowns
     # (Database queries not allowed during DAG parsing)
     SONADOR_CONNECTIONS: "sonador_default"
     S3_CONNECTIONS: "s3_default"
 
-    # Remote Logging (disabled for local development)
-    AIRFLOW__LOGGING__REMOTE_LOGGING: "false"
-    # AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
-    # AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: s3_default
-    # AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
+    AIRFLOW__LOGGING__REMOTE_LOGGING: "true"
+    AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
+    AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: s3_default
+    AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
 
     # Docker Model Runner LLM Integration (Docker Desktop built-in)
     # From containers: http://model-runner.docker.internal/

@@ -1,7 +1,7 @@
 import logging, json, os
 from collections import namedtuple
 
-from airflow.hooks.base import BaseHook
+from airflow.sdk.bases.hook import BaseHook
 
 from client.utils.conversion import str2bool
 from client.utils.object import pick

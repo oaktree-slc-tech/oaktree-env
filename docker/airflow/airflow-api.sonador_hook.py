@@ -1,7 +1,7 @@
 import logging, json, os
 from collections import namedtuple
 
-from airflow.hooks.base import BaseHook
+from airflow.sdk.bases.hook import BaseHook
 
 from client.utils.conversion import str2bool
 from client.utils.urls import build_url, validate_url
@@ -81,7 +81,7 @@ class SonadorHook(BaseHook):
 
 		# Retrieve imaging server UID and DNS
 		iserver_uid = conn_extra.get(SONADOR_IMAGING_SERVER)
-		internal_dns = str2bool(conn_extra.get(SONADOR_INTERNAL_DNS, False))
+		internal_dns = str2bool(conn_extra.get(SONADOR_INTERNAL_DNS, True))
 		verify_ssl = str2bool(conn_extra.get(SONADOR_VERIFY_SSL, False))
 
 		return SonadorAirflowConnectionParams(
