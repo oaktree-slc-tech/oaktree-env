@@ -19,6 +19,7 @@
 ---
 version: '3.0'
 
+
 x-airflow-common:
   &airflow-common
   image: registry.oak-tree.tech/oak-tree/medical-imaging/agentic-ai:airflow
@@ -95,6 +96,11 @@ x-airflow-common:
 
 
 services:
+
+  initContainers:
+    image: busybox
+    command: ['sh', '-c', 'mkdir -p /opt/airflow/logs/dag_processor && chmod -R 777 /opt/airflow/logs']
+
 
   airflow-postgres:
     image: postgres:16
