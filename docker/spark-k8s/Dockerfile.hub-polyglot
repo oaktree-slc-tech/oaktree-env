@@ -1,0 +1,28 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-k8s-dl:latest
+
+USER root 
+
+# Install Maven (provides for auto package fetch in Spark 3)
+RUN apt-get install -y maven
+
+# Install Rust Jupyter Kernel
+RUN cargo install evcxr_jupyter
+
+# Set User back to jovyan/1000
+USER 1000
+
+# Register Rust Kernel with Jupyter
+RUN evcxr_jupyter --install
+
+# Install Almond (Scala Kernel)
+RUN mkdir -p /tmp/coursier && cd /tmp/coursier \
+  && curl -Lo coursier https://git.io/coursier-cli \
+  && chmod +x coursier \
+  && ./coursier launch --fork almond -- --install \
+  && cd /tmp && rm -rf /tmp/coursier
+
+# Install jupyter-server-proxy
+RUN pip3 install --user --break-system-packages jupyter-server-proxy
+
+# Set active path in the notebook instance
+ENV PATH="/home/jovyan/.dotnet/tools:/opt/maven/bin:${PATH}"

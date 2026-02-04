@@ -1,0 +1,11 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-dask
+USER root 
+
+# Download/install NLP libraries
+RUN apt-get update && apt-get install -y libsndfile1 ffmpeg \
+	&& pip3 install --break-system-packages Cython
+COPY requirements/nlp.txt /opt/root/requirements/
+RUN pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/nlp.txt
+
+# Set active user and path path in the notebook instance
+USER 1000

@@ -1,0 +1,13 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-nlp:latest
+USER root 
+
+# Install VTK, ITK, MONAI, PyVista, Trame, Sonador 3D/AI
+COPY requirements/scientific-visualization.txt /opt/root/requirements/
+ENV PYVISTA_OFF_SCREEN=true \
+  DISPLAY=":99.0"
+RUN apt-get update && apt-get -y install libgl1-mesa-dev xvfb \
+  && pip3 install --break-system-packages -r /opt/root/requirements/scientific-visualization.txt
+
+# Set User back to jovyan/1000
+USER 1000
+

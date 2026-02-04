@@ -1,0 +1,41 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-k8s-jupyter
+USER root
+
+# Install git and other version control tools, additional Python dependencies
+RUN apt-get install -y mono-mcs musl-dev curl gnupg 
+RUN curl -sL https://deb.nodesource.com/setup_18.x  | bash - \
+  && apt-get -y install nodejs
+
+# Install Kafka client tools and Python libraries
+ADD https://archive.apache.org/dist/kafka/4.1.1/kafka_2.13-4.1.1.tgz /tmp
+RUN apt-get update && apt-get install -y scala \
+  && cd /tmp && tar -xvzf kafka_2.13-4.1.1.tgz \
+  && mv kafka_2.13-4.1.1 /opt/kafka
+ENV PATH=$PATH:/opt/kafka/bin
+
+# Allow files to be stored locally and remotely. Install image, stats, visualization, and core geocoding deps.
+COPY requirements/scientific-hub.txt /opt/root/requirements/
+RUN apt-get install -y postgresql-common libpq-dev \
+  && pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/scientific-hub.txt
+
+# Install pandoc (need for PDF output)
+RUN apt-get -y install pandoc texlive-xetex
+
+# Install additional Python visualization and GIS libraries
+COPY requirements/cartography.txt /opt/root/requirements/
+RUN apt-get install -y libgdal-dev \
+  && pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/cartography.txt
+
+# Add text editors and sudo, allow sudo without prompt
+RUN apt-get install -y sudo vim \
+  && echo "jovyan ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Configure Working Directory and Storage Plugins
+USER 1000
+COPY requirements/jupyterlab-stats.txt requirements/jupyterlab-cartography.txt \
+  /opt/root/requirements/
+RUN pip3 install --user --break-system-packages --no-cache-dir \
+    -r /opt/root/requirements/jupyterlab-stats.txt \
+    -r /opt/root/requirements/jupyterlab-cartography.txt \
+  && pip3 install --user --break-system-packages python-gitlab jupyterlab-git
+ENV PATH=$PATH:/opt/kafka/bin:/opt/spark/bin

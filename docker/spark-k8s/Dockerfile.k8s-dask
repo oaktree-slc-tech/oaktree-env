@@ -1,0 +1,7 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-k8s-polyglot:latest
+USER root
+
+# Install Dask
+RUN pip3 install --break-system-packages dask[complete]
+
+USER jovyan

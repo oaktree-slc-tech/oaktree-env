@@ -1,0 +1,21 @@
+--extra-index-url https://code.oak-tree.tech/api/v4/projects/335/packages/pypi/simple
+
+# Visualization Libraries
+vtk
+SimpleITK
+pyvista[all,trame]
+trame
+trame-vtk
+trame_jupyter_extension
+
+# IO Libraries
+pytorch-ignite
+nibabel
+monai
+
+# Sonador 3D and AI
+sonador3d>=0.3.0a1
+sonadorai
+
+# PyQt5
+PyQt5
