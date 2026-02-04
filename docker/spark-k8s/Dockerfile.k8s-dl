@@ -1,0 +1,9 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-k8s-analytics-core
+USER root
+
+# PyTorch
+RUN pip3 install --break-system-packages torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126 \
+	&& pip3 --no-cache-dir install --break-system-packages fuzzywuzzy pydotplus shap xgboost
+
+USER jovyan
+

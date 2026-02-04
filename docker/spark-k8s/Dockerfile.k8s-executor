@@ -1,0 +1,44 @@
+# Runtime Container Image. Adapted from the official Spark runtime 
+# image from the project repository at https://github.com/apache/spark.
+FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu24.04 AS build
+
+# Configure timezone variables
+ENV DEBIAN_FRONTEND=noninteractive \
+  LC_ALL=en_US.UTF-8 \
+  LANG=en_US.UTF-8 \
+  TZ=UTC
+
+# Install Spark Dependencies and Prepare Runtime Environment
+RUN set -ex && \
+    apt-get update && \
+    ln -s /lib /lib64 && \
+    mkdir -p /usr/share/man/man1 && \
+    apt install -y bash curl tini libc6 libpam-modules libnss3 wget python3 python3-pip scala \
+      build-essential pkg-config libssl-dev python3-pip \
+    && rm /bin/sh && \
+    ln -sv /bin/bash /bin/sh && \
+    ln -sv /usr/bin/tini /sbin/tini && \
+    echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su && \
+    chgrp root /etc/passwd && chmod ug+rw /etc/passwd && \
+    ln -sv /usr/bin/python3 /usr/bin/python && \
+    ln -sv /usr/bin/pip3 /usr/bin/pip \
+    rm -rf /var/cache/apt/*
+
+# Install Core Dependencies: GFortran, GCC, Rust and configure default Locale
+RUN apt-get install -y --no-install-recommends fonts-dejavu unixodbc unixodbc-dev gfortran \
+      dirmngr ed locales ca-certificates software-properties-common
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+  && locale-gen en_US.utf8 \
+  && /usr/sbin/update-locale LANG=en_US.UTF-8 \
+  && apt install -yqq krb5-user \
+  && curl https://sh.rustup.rs -sSf | bash -s -- -y \
+  && rm -rf /var/cache/apt/*
+
+# Install PySpark
+RUN pip install --break-system-packages "pyspark==4.1.1"
+
+# Specify the User that the actual main process will run as
+USER 1000

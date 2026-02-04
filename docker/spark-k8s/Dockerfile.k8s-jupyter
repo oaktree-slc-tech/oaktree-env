@@ -1,0 +1,31 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-k8s-driver
+
+# Install Jupyter and Data Science libraries
+USER root
+RUN apt-get install -y git \
+	&& mkdir -p /opt/root/requirements \
+	&& chown -R 1000:1000 /opt/root/
+COPY requirements/scientific-core.txt /opt/root/requirements/
+RUN pip3 install --break-system-packages -r /opt/root/requirements/scientific-core.txt
+RUN mkdir -p /home/public && chmod 777 /home/public
+
+# Install Python Virtual Environment and IP Utils
+RUN apt-get update && apt-get install -y python3-venv unzip iputils-ping
+
+# Configure Jupyter User
+ARG NB_USER="jovyan" \
+	NB_UID="1000" \
+	NB_GROUP="analytics" \
+	NB_GID="777" \
+	NB_SH="/bin/bash"
+RUN groupadd -g $NB_GID $NB_GROUP \
+	&& usermod -d /home/$NB_USER -m -g $NB_GROUP -u $NB_UID -l $NB_USER ubuntu -s $NB_SH \
+	&& mkdir -p /home/$NB_USER/work \
+	&& mkdir -p /home/$NB_USER/.jupyter \
+	&& chown -R $NB_USER:$NB_GROUP /home/$NB_USER
+
+# Configure Working Directory and Install JupyterLab
+USER 1000
+RUN pip3 install --user --break-system-packages --no-cache-dir jupyterlab jupytext
+ENV PATH=/home/$NB_USER/.local/bin:$PATH
+WORKDIR /home/$NB_USER/work

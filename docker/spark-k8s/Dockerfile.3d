@@ -1,0 +1,8 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-cv:latest
+USER root 
+
+# Install other meshing and 3D data libraries
+COPY requirements/scientific-3d.txt /opt/root/requirements/
+RUN pip3 install --break-system-packages -r /opt/root/requirements/scientific-3d.txt
+	
+USER 1000

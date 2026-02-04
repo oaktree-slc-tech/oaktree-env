@@ -1,0 +1,15 @@
+--extra-index-url https://code.oak-tree.tech/api/v4/projects/335/packages/pypi/simple
+
+
+# General Image Processing
+pillow
+
+# Filesystems
+pgcontents
+s3fs
+
+# Statistical Visualization and Profiling
+plotnine
+pymc
+statsmodels
+missingno

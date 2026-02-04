@@ -1,0 +1,21 @@
+FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-itk:latest
+USER root
+
+# Install Python-OCC
+RUN apt-get install -y cmake swig rapidjson-dev libtbb-dev \
+	libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev \
+	libocct-modeling-algorithms-dev libocct-modeling-data-dev libocct-ocaf-dev \
+	libocct-visualization-dev \
+	&& mkdir -p /tmp/src/ && cd /tmp/src/ \
+	&& wget https://www.oak-tree.tech/documents/361/python-occ-7.6.3.tar.gz \
+	&& tar -xf python-occ-7.6.3.tar.gz && cd python-occ-release-7.6 \
+	&& mkdir cmake-build && cd cmake-build \
+	&& cmake ../ && make -j 4 && make install \
+	&& cd /tmp && rm -rf /tmp/src
+
+# Install Computer Vision Libraries
+COPY requirements/scientific-computer-vision.txt /opt/root/requirements/
+RUN pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/scientific-computer-vision.txt
+RUN apt-get install -y gimp
+
+USER 1000
