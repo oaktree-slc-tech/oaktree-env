@@ -3,10 +3,11 @@ version: "2.3"
 services:
   
   jupyter:
-    image: oaktreetech/root.3d
+    image: oaktreetech/root.3d:2026-01
     volumes:
     - ../local:/home/jovyan/work/
-    - ../.local:/home/jovyan/
+    - ../.local/.cache:/home/jovyan/.cache/
+    - ../.local/.jupyter:/home/jovyan/.jupyter/
     deploy:
       resources:
         reservations:
@@ -20,9 +21,7 @@ services:
       OBJECTS_SECRET: "jupyter@analytics"
       OBJECTS_ACCESSID: "jupyter"
       JUPYTER_ALLOW_INSECURE_WRITES: "True"
-    command: ["jupyter", "lab", "--ip", "0.0.0.0"]
-    ports:
-    - 8888:8888
-    - 4040:4040
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["exec jupyter lab --ip=0.0.0.0 --no-browser"]
     shm_size: 8gb
     network_mode: host
