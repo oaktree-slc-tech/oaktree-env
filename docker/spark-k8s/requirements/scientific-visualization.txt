@@ -6,7 +6,7 @@ SimpleITK
 pyvista[all,trame]
 trame
 trame-vtk
-trame_jupyter_extension
+trame-components
 
 # IO Libraries
 pytorch-ignite

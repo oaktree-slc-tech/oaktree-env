@@ -8,10 +8,13 @@ RUN apt-get install -y maven
 # Install Rust Jupyter Kernel
 RUN cargo install evcxr_jupyter
 
-# Set User back to jovyan/1000
+# Install jupyter-server-proxy
+RUN pip3 install --user --break-system-packages jupyter-server-proxy
+
+# Set User back to jovyan/1000 and adjust active path to include Maven
 USER 1000
 
-# Register Rust Kernel with Jupyter
+# Install Rust Jupyter Kernel
 RUN evcxr_jupyter --install
 
 # Install Almond (Scala Kernel)
@@ -21,8 +24,4 @@ RUN mkdir -p /tmp/coursier && cd /tmp/coursier \
   && ./coursier launch --fork almond -- --install \
   && cd /tmp && rm -rf /tmp/coursier
 
-# Install jupyter-server-proxy
-RUN pip3 install --user --break-system-packages jupyter-server-proxy
-
-# Set active path in the notebook instance
-ENV PATH="/home/jovyan/.dotnet/tools:/opt/maven/bin:${PATH}"
+ENV PATH="/opt/maven/bin:${PATH}"

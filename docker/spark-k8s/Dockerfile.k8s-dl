@@ -2,8 +2,9 @@ FROM registry.oak-tree.tech/courseware/oak-tree/dataops-examples/spark-k8s-analy
 USER root
 
 # PyTorch
+COPY requirements/scientific-stats.txt /opt/root/requirements/
 RUN pip3 install --break-system-packages torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126 \
-	&& pip3 --no-cache-dir install --break-system-packages fuzzywuzzy pydotplus shap xgboost
+	&& pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/scientific-stats.txt
 
 USER jovyan
 

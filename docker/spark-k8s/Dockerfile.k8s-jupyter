@@ -23,9 +23,9 @@ RUN groupadd -g $NB_GID $NB_GROUP \
 	&& mkdir -p /home/$NB_USER/work \
 	&& mkdir -p /home/$NB_USER/.jupyter \
 	&& chown -R $NB_USER:$NB_GROUP /home/$NB_USER
+RUN pip3 install --break-system-packages --no-cache-dir jupyterlab jupytext
 
 # Configure Working Directory and Install JupyterLab
 USER 1000
-RUN pip3 install --user --break-system-packages --no-cache-dir jupyterlab jupytext
 ENV PATH=/home/$NB_USER/.local/bin:$PATH
 WORKDIR /home/$NB_USER/work
