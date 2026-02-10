@@ -6,11 +6,10 @@ from io import BytesIO
 from collections import namedtuple
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator, ExternalPythonOperator
-from airflow.utils.dates import days_ago
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator, ExternalPythonOperator
 from airflow.models import Variable
-from airflow.models.param import Param
+from airflow.sdk import Param
 
 from client.utils.conversion import str2bool
 from client.utils.object import pick
@@ -43,19 +42,54 @@ def sonador_connections():
 def verify_etl_env(**kwargs):
 	'''	Log the command context to stderr
 	'''
+	import boto3
+	from botocore.exceptions import ClientError
 	from sonador_hook import SonadorHook
 	from object_storage_hook import ObjectStorageHook
-	from airflow.io.path import ObjectStoragePath
 
+	# Verify Sonador connection first
 	hook = SonadorHook(**SonadorHook.hook_options(**kwargs))
 	hook.verify_etl_env()
 	iserver = hook.init_sonador_imageserver()
+	logger.info('Sonador connection verified successfully')
 
-	# Retrieve Airflow S3 connection and ensure that a variable has been defined specifying the 
-	# working bucket for total segmentator.
+	# Retrieve Airflow S3 connection and ensure bucket exists
 	storage_hook = ObjectStorageHook(**ObjectStorageHook.hook_options(**kwargs))
 	p = storage_hook.get_storage_params()
-	objects = ObjectStoragePath(p.root, conn_id=p.conn_id)
+	logger.info(f'S3 storage params: conn_id={p.conn_id}, root={p.root}')
+
+	# Extract bucket name from s3://bucket-name path
+	bucket_name = p.root.replace('s3://', '').split('/')[0]
+	logger.info(f'Target bucket: {bucket_name}')
+
+	# Get connection details for direct boto3 usage
+	conn = storage_hook.get_connection()
+	conn_extra = conn.extra if isinstance(conn.extra, dict) else json.loads(conn.extra or '{}')
+
+	# Log connection details (mask password)
+	endpoint_url = conn_extra.get('endpoint_url', 'http://object-storage:9000')
+	logger.info(f'S3 endpoint: {endpoint_url}, login: {conn.login}, has_password: {bool(conn.password)}')
+
+	# Create boto3 client directly with explicit endpoint
+	s3_client = boto3.client('s3',
+		endpoint_url=endpoint_url,
+		aws_access_key_id=conn.login,
+		aws_secret_access_key=conn.password,
+		region_name=conn_extra.get('region_name', 'us-east-1')
+	)
+
+	# Create bucket if it doesn't exist
+	try:
+		s3_client.head_bucket(Bucket=bucket_name)
+		logger.info(f'S3 bucket exists: {bucket_name}')
+	except ClientError as e:
+		error_code = e.response.get('Error', {}).get('Code', '')
+		if error_code in ('404', 'NoSuchBucket'):
+			s3_client.create_bucket(Bucket=bucket_name)
+			logger.info(f'Created S3 bucket: {bucket_name}')
+		else:
+			logger.error(f'S3 error: {e}')
+			raise
 
 
 def sonador_prepare_totalsegmentator_data(**kwargs):
@@ -71,7 +105,7 @@ def sonador_prepare_totalsegmentator_data(**kwargs):
 
 	from sonador_hook import SonadorHook
 	from object_storage_hook import ObjectStorageHook
-	from airflow.io.path import ObjectStoragePath
+	from airflow.sdk import ObjectStoragePath
 
 	from sonador.apisettings import DCM_MODALITY_MR, DCM_MODALITY_CT
 	from sonador3d.imaging.volume import SonadorImagingVolume
@@ -89,11 +123,10 @@ def sonador_prepare_totalsegmentator_data(**kwargs):
 	# Initialize Sonador Server
 	iserver = SonadorHook(**SonadorHook.hook_options(**kwargs)).init_sonador_imageserver()
 
-	# Initialize object storage
+	# Initialize object storage (bucket must already exist)
 	storage_hook = ObjectStorageHook(**ObjectStorageHook.hook_options(**kwargs))
 	p = storage_hook.get_storage_params()
 	objects = ObjectStoragePath(p.root, conn_id=p.conn_id)
-	objects.mkdir(exist_ok=True)
 
 	# Retrieve series to be segmented by Total Segmentator, ensure that it is a supported modality (CT/MR)
 	sx = iserver.get_series(sx_uid)
@@ -131,14 +164,14 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 		5. DICOM encode mesh and upload to Sonador
 	'''
 	import sys, os, logging, tempfile
-	
+
 	import SimpleITK as sitk
 	import numpy as np
 	import pymeshfix
 
 	from sonador_hook import SonadorHook
 	from object_storage_hook import ObjectStorageHook
-	from airflow.io.path import ObjectStoragePath
+	from airflow.sdk import ObjectStoragePath
 
 	from sonador.apisettings import DCM_DATE_STRFORMAT, DCM_TIME_STRFORMAT
 	from sonador.apisettings.m3d import ANATOMY_BONE_HEXCOLOR
@@ -153,7 +186,7 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 	if not sx_uid:
 		raise ValueError('Unable to perform segmentation. Invalid series UID: "%s"' % sx_uid)
 
-	# Retrieve mesh parameters 
+	# Retrieve mesh parameters
 	totalsegmentator_labelmap = params.get('totalsegmentator_labelmap') or {}
 	m3d_colors = params.get('m3d_colors')
 	m3d_dcm_num = params.get('m3d_dcm_num')
@@ -172,11 +205,10 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 	# Initialize Sonador Server
 	iserver = SonadorHook(**SonadorHook.hook_options(**kwargs)).init_sonador_imageserver()
 
-	# Initialize object storage
+	# Initialize object storage (bucket must already exist)
 	storage_hook = ObjectStorageHook(**ObjectStorageHook.hook_options(**kwargs))
 	p = storage_hook.get_storage_params()
 	objects = ObjectStoragePath(p.root, conn_id=p.conn_id)
-	objects.mkdir(exist_ok=True)
 
 	# Retrieve series that was segmented by Total Segmentator
 	sx = iserver.get_series(sx_uid)
@@ -263,14 +295,14 @@ available_storage_connections = object_storage_connections()
 default_args = {
 	'owner': 'sonador',
 	'depends_on_past': False,
-	'starts_date': days_ago(1),
+	'start_date': datetime(2024, 1, 1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
 
 
 # Initialize TotalSegmentator DAG
-dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule_interval=None, params={
+dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule=None, params={
 
 	# Sonador and S3 connections
 	'conn_id': Param(type='string', enum=available_sonador_connections, 

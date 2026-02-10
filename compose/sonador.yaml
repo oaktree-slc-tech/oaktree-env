@@ -14,17 +14,18 @@ services:
   
   # Sonador Web Application
   imaging:
-    image: oaktreetech/sonador:latest
+    image: sonador-agentic
     ports:
     - 8070:8070
     volumes:
     - ../config/sonador:/srv/www/sonador/config
+    - ../data/sonador/docroot/:/srv/www/sonador/config/docroot
     # Uncomment the line below to mount a local checkout of the Sonador Web Application
     # sources staged in ../src/sonador to enable local development.
-    # - ../src/sonador:/srv/www/sonador/sonador
+    - ../src/sonador:/srv/www/sonador/sonador
     environment:
       SONADOR_SITECONFIG: "/srv/www/sonador/config/sonador.site.config"
-      DJANGO_SETTINGS_MODULE: "sonador.settings"
+      DJANGO_SETTINGS_MODULE: "sonador.settings.devel"
       SONADOR_SERVER_HOSTNAME: imaging.local
       SONADOR_SERVER_DESCRIPTION: "Sonador Development"
       SONADOR_USERNAME: dev01
