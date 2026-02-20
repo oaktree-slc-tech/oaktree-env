@@ -125,12 +125,10 @@ dag = DAG('SonadorExample02-Index', default_args=default_arguments, params={
 
 # Define task steps
 l0 = PythonOperator(task_id='example02-verify-env', python_callable=verify_etl_env, dag=dag)
-t1 = PythonOperator(task_id='example02-index-imagearchive', python_callable=sonador_index_imagearchive, dag=dag,
-	depends_on_past=True, retries=2)
-t2 = PythonOperator(task_id='example02-validate-indexop', python_callable=sonador_validate_indexop, dag=dag,
-	depends_on_past=True)
-t3 = PythonOperator(task_id='example02-remove-series', python_callable=sonador_remove_series, dag=dag,
-	depends_on_past=True)
+t1 = PythonOperator(task_id='example02-index-imagearchive', python_callable=sonador_index_imagearchive, 
+	dag=dag, retries=2)
+t2 = PythonOperator(task_id='example02-validate-indexop', python_callable=sonador_validate_indexop, dag=dag)
+t3 = PythonOperator(task_id='example02-remove-series', python_callable=sonador_remove_series, dag=dag)
 
 
 # Order tasks

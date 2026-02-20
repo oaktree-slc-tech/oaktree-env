@@ -1,6 +1,7 @@
-import logging, json, os
+import logging, json, os, traceback
 from collections import namedtuple
 
+from airflow.models import Variable
 from airflow.sdk.bases.hook import BaseHook
 
 from client.utils.conversion import str2bool
@@ -131,25 +132,10 @@ class SonadorHook(BaseHook):
 		or returns a default connection list.
 		'''
 		# First try environment variable (works in all contexts)
-		env_connections = os.environ.get('SONADOR_CONNECTIONS', '')
+		env_connections = Variable.get('SONADOR_CONNECTIONS', default_var='')
 		if env_connections:
 			return [c.strip() for c in env_connections.split(',') if c.strip()]
 
-		# Try database access (only works during task execution in Airflow 3.0)
-		try:
-			from airflow.models.connection import Connection
-			from airflow.settings import Session
-
-			session = Session()
-			try:
-				connections = session.query(Connection).filter(Connection.conn_type==sonador_conn_type)
-				return [conn.conn_id for conn in connections]
-			finally:
-				session.close()
-
-		except RuntimeError as e:
-			# Airflow 3.0: Direct database access not allowed during DAG parsing
-			# Return default connection name
-			logger.debug('Database access not available during DAG parsing: %s', e)
-			default_conn = os.environ.get('SONADOR_DEFAULT_CONN', 'sonador_default')
-			return [default_conn]
+		# Retrieve default connection
+		default_conn = Variable.get('SONADOR_DEFAULT_CONN', default_var='sonador')
+		return [default_conn]
