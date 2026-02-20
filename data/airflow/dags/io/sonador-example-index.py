@@ -9,7 +9,6 @@ from airflow import DAG
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
-from airflow.utils.dates import days_ago
 from airflow.sdk import Param
 
 from client.utils.conversion import str2bool
@@ -107,7 +106,7 @@ def sonador_remove_series(**context):
 default_arguments = {
 	'owner': 'sonador',
 	'depends_on_past': False,
-	'start_date': days_ago(1),
+	'start_date': datetime(2020,1,1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
