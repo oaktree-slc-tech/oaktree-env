@@ -31,7 +31,6 @@ x-airflow-common:
   - ../docker/airflow/src/airflow-api.sonador_hook.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py:ro
   - ../docker/airflow/src/sonador-sso.webserver_config.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_sso.py:ro
   - ../docker/airflow/src/airflow-api.object_storage_hook.py:/home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py:ro  
-  - ../src/sonadorio:/home/airflow/.local/lib/python3.10/site-packages/sonador:ro  
 
   environment:
     &airflow-common-env
