@@ -14,10 +14,40 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def execute_cmd(cmd, bufsize=1, universal_newlines=True):
+	'''	Execute the provided command and stream output to STDOUT / logging
+	'''
+	try:
+		proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+			bufsize=bufsize, universal_newlines=universal_newlines)
+
+		# Stream output
+		for l in proc.stdout:
+			sys.stdout.write(l)
+			sys.stdout.flush()
+
+		# Wait for the process to complete
+		rcode = proc.wait()
+		if rcode != 0:
+			raise subprocess.CalledProcessError(rcode, cmd)
+
+	except subprocess.CalledProcessError as err:
+		logger.error('Unable to execute Total Segmentator commend. Cmd: "%s". Error: "%s".' % (
+			' '.join(cmd), err
+		))
+
+
 def sonador_totalsegmentator_execute(conn_id, s3_conn_id, series_uid, totalsegmentator_labels,
-		totalsegmentator_device='cpu', tmp_prefix='totalsegmentator/tmp'):
+		totalsegmentator_license=None, totalsegmentator_device='cpu', tmp_prefix='totalsegmentator/tmp'):
 	'''	Execute segmentation of a Sonador series as part of an Airflow DAG.
 	'''
+
+	# Register Total Segmentator (if license provided)
+	if totalsegmentator_license:
+		execute_cmd([
+			'/home/airflow/env/totalsegmentator/bin/totalseg_set_license', '-l', totalsegmentator_license,
+		])
+
 	# Unpack Total Segmentator labels
 	if not totalsegmentator_labels:
 		raise ValueError('Unable to execute Total Segmentator pipeline, no labels provided')
@@ -73,24 +103,7 @@ def sonador_totalsegmentator_execute(conn_id, s3_conn_id, series_uid, totalsegme
 		cmd.extend(totalsegmentator_labels)
 
 		logger.info('Total Segmenator cmd:\n%s' % ' '.join(cmd))
-
-		try:
-			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-				bufsize=1, universal_newlines=True)
-
-			# Stream output
-			for l in proc.stdout:
-				sys.stdout.write(l)
-				sys.stdout.flush()
-
-			# Wait for process to complete
-			rcode = proc.wait()
-			if rcode != 0:
-				raise subprocess.CalledProcessError(rcode, cmd)
-
-		except subprocess.CalledProcessError as err:
-			logger.error('Unable to run Total Segmentator command. Error: "%s"' % err)
-			raise err
+		execute_cmd(cmd)
 
 		# Iterate through output directory and copy labels to remote storage
 		for seg_outfile in os.listdir(seg_outfpath):
@@ -127,11 +140,14 @@ if __name__ == '__main__':
 		help='Total Segmentator regions of interest to be processed')
 	parser.add_argument('--device', default='cpu', dest='device',
 		help='Compute device which Total Segmentator will be run on.')
+	parser.add_argument('--totalsegmentator-license', dest='license', default=None,
+		help='Total Segmenator license to use while running inference. If present, Total Segmentator '
+			+ 'is able to access private models for ')
 
 	# Parse args
 	args = parser.parse_args()
 
 	# Execute script
 	sonador_totalsegmentator_execute(args.conn_id, args.s3_conn_id, args.series_uid,
-		totalsegmentator_labels=args.totalsegmentator_labels,
+		totalsegmentator_license=args.license, totalsegmentator_labels=args.totalsegmentator_labels,
 		totalsegmentator_device=args.device)

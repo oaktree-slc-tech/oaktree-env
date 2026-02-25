@@ -1,6 +1,8 @@
-# ETL Example 2: Index Medical Images
-# This example shows the use of the AirFlow Python operator in order
-# to retrieve, index, verify, and remove a medical imaging scan.
+'''
+# Sonador ETL Example 2: Index Medical Imags
+This examples hows the use of the AirFlow Python operator in order to 
+retrieve, index, verify, and remove a medical imaging scan.
+'''
 import logging, requests, re, fnmatch, zipfile
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -120,7 +122,7 @@ available_sonador_connections = SonadorHook.available_connections()
 dag = DAG('SonadorExample02-Index', default_args=default_arguments, params={
 		'conn_id': Param(type='string', enum=available_sonador_connections, 
 			default=available_sonador_connections[0] if available_sonador_connections else None),
-	})
+	}, tags=['sonador-io', 'sonador-example'], doc_md=__doc__)
 
 
 # Define task steps

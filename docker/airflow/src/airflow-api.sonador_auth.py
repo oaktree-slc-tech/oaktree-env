@@ -14,18 +14,31 @@
                 If present, the Sonador API token will taken precedence.
 '''
 import os, logging
-from functools import wraps
-from typing import Any, Callable, Optional, Tuple, TypeVar, Union, cast
+from functools import wraps, cached_property
+from typing import Any, Callable, Awaitable, Optional, Tuple, TypeVar, Union, cast
+from jwt import InvalidTokenError
 
-from flask import Response, current_app, request
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
-from airflow.www.security import AirflowSecurityManager
+from airflow.configuration import conf
+from airflow.providers.fab.auth_manager.fab_auth_manager import FabAuthManager
+from airflow.providers.fab.auth_manager.security_manager.override import FabAirflowSecurityManagerOverride
+from airflow.exceptions import AirflowException
 
-from flask_login import login_user
+from flask import abort as flash_abort, request as flask_request, make_response as flask_make_response, \
+    redirect as flask_redirect
+from flask_appbuilder.views import expose
+from flask_appbuilder.security.views import AuthOAuthView
+from flask_appbuilder.const import AUTH_OAUTH
+from flask import session as flask_session
+from flask_login import login_user as flask_login_user
 
 from client.utils.urls import validate_url
-from client.errors import ClientOperationError
+from client.utils.object import pick, omit
+from client.errors import ConfigurationError, ClientOperationError
 
+from sonador import apisettings as sonador_api
 from sonador.apisettings import SONADOR_ACCESS_ID as SONADORENV_ACCESS_ID, \
     SONADOR_SECRET_KEY as SONADORENV_SECRET_KEY, \
     SONADOR_URL as SONADORENV_URL, SONADOR_APITOKEN as SONADORENV_APITOKEN, \
@@ -54,64 +67,125 @@ if not os.environ.get(SONADORENV_SERVICE_CLIENT_ID):
 # application as environment variables. Refer to docstring above for details.
 SONADOR_CONN = initenv_sonador_server()
 SONADOR_DATA_SERVICE = SONADOR_CONN.get_dataservice(os.environ.get(SONADORENV_SERVICE_CLIENT_ID))
+if not SONADOR_DATA_SERVICE.openid_allow_auth:
+    raise ConfigurationError(('Unable to enable SSO, Sonador Data Service (uid="%s") does not have OpenID Connect '
+        "authentication enabled.") % (SONADOR_DATA_SERVICE.pk))
 
 
-CLIENT_AUTH: Optional[Union[Tuple[str, str], Any]] = None
+# SSO / OpenID Connect Constants
+SONADOR_SERVICE_OPENID_SCOPE = os.environ.get('SONADOR_SERVICE_OPENID_SCOPE', 'openid email profile')
 
 
-def init_app(*args, **kwargs):
-    ''' Initializes the authentication backend
+def sonador_authtoken2user(sm, authtoken_type, authtoken, dataservice=SONADOR_DATA_SERVICE):
+    ''' Introspect the provided token and retrieve the associated user. As part of the introspection,
+        user attributes/properties are updated within the Flask database.
     '''
-    logger.info('Sonador API authentication enabled. Sonador instance: %s' % os.environ.get(SONADORENV_URL))
-    logger.info('Sonador Data Service ID: %s' % os.environ.get(SONADORENV_SERVICE_CLIENT_ID))
+    # Retrieve user info from Sonador via token introspection
+    user_info = dataservice.verify_api_credentials(authtoken_type, authtoken)
 
+    # Map Sonador attributes to Airflow User properties
+    _user_data = pick(user_info['user'], ('username', 'first_name', 'last_name', 'email'))
+    _user_data.update({
+        'role': sm.find_role('Admin' if (
+                user_info['user'].get('is_staff') or user_info['user'].get('is_superuser')) \
+            else 'User'),
+    })
 
-T = TypeVar('T', bound=Callable)
-
-
-def auth_current_user():
-    ''' Check authentication credentials for the provided
-    '''
-    auth = request.authorization
-
-    # Sonador credentials are passed using the username/password fields.
-    # The username will contain the authentication method and the password
-    # will contain the authorization token.
-    if auth is None or not auth.username or not auth.password:
-        return None
-
-    # Check authentication credentials with Sonador
-    ab_security_manager = current_app.appbuilder.sm
-    try: cred_auth = SONADOR_DATA_SERVICE.verify_api_credentials(auth.username, auth.password)
-    except ClientOperationError as err: cred_auth = None
-
-    # Credentials valid: retrieve or create user instance and authenticate user to Airflow
-    if cred_auth and cred_auth.get('granted'):
+    # Retrieve/update Airflow user instance
+    _user = sm.find_user(username=_user_data.get('username'))
+    if not _user:
+        _user = sm.add_user(**_user_data)
+    else:
         
-        # Retrieve user by email or username. Users must first be registered in the system
-        # to authenticate using Sonador credentials.
-        user = ab_security_manager.find_user(email=cred_auth.get('user', {}).get('email'))
-        if user is None:
-            user = ab_security_manager.find_user(username=cred_auth.get('user', {}).get('username'))
-    
-    # Invalid credentials
-    else: user = None
+        # Update role and user attributes
+        _user.roles = [_user_data['role']]
+        for _attr,_val in omit(_user_data, ('role',)).items():
+            setattr(_user, _attr, _val)
 
-    # Authenticate user to the API
-    if user is not None:
-        login_user(user, remember=False)
+        # Commit changes to the database
+        _success = sm.update_user(_user)
 
-    return user
+    return _user
 
 
-def requires_authentication(function: T):
-    ''' Decorator for functions that require authentication
+class SonadorAuthOAuthView(AuthOAuthView):
+    ''' Authorizaton view for Data Service Open ID Connect mediated loging for Airflow
     '''
-    @wraps(function)
-    def decorated(*args, **kwargs):
-        if auth_current_user() is not None:
-            return function(*args, **kwargs)
-        else:
-            return Response("Unauthorized", 401, {"WWW-Authenticate": "Sonador API Token, Access ID/Secret"})
+    @expose('/oauth-authorized/sonador')
+    def oauth_authorized(self):
+        ''' Process login redirect from Sonador as part of authorization_code workflow
 
-    return cast(T, decorated)
+            1. Exchange code for auth token.
+            2. Stash token details in session so it is available for use from within Airflow machinery.
+            3. Create user account (if it does not already exist), set role from current permissions.
+            4. Login user to Airflow
+            5. Redirect to the index             
+        '''
+        auth_code = flask_request.args.get('code')
+        state = flask_request.args.get('state')
+        nonce = flask_request.args.get('nonce')
+
+        logger.warn('oAuth request parameters: auth-code=%s state=%s nonce=%s' % (auth_code, state, nonce))
+
+        if not auth_code:
+            raise ValueError('Invalid OpenID request structure, Unable to retrieve authorization code')
+
+        # Exchange code for authorization token
+        _token = SONADOR_DATA_SERVICE.oidc_fetch_authtoken(auth_code, rdata={
+            'scope': SONADOR_SERVICE_OPENID_SCOPE,
+        })
+
+        # Stash token so that it is available for SecurityManager to use.
+        flask_session['sonador-authtoken'] = _sonador_authtoken = _token.get('token')
+        flask_session['sonador-authtoken-type'] = _sonador_authtoken_type = _token.get('token_type')
+
+        # Retrieve user info and map to Airflow user record/role, map user role based on permissions in Sonador
+        _user = sonador_authtoken2user(self.appbuilder.sm, _sonador_authtoken_type, _sonador_authtoken)
+
+        # Authenticate user to Airflow
+        flask_login_user(_user, remember=False)
+        return flask_redirect(self.appbuilder.get_url_for_index)
+
+
+class SonadorSecurityManager(FabAirflowSecurityManagerOverride):
+    ''' Sonador / Airflow Single Sign On Security Manager.
+    '''
+    authoauthview = SonadorAuthOAuthView
+    sonador_authtoken_types = (OAUTH_TOKEN_TYPE_BEARER, API_ACCESS_TOKEN)
+
+    def auth_user_db(self, username, password, **kwargs):
+        ''' Authenticate the user to the database. For Sonador API tokens, retrieve user details
+            via the data service and initializse a user instance.
+        '''
+        # Attempt to retrieve user via Sonador auth token
+        if username in self.sonador_authtoken_types:
+            _user = sonador_authtoken2user(self, username, password)
+
+            # Login user
+            if _user:
+                return _user
+        
+        # If unable to authenticate via Sonador token, attempt to authenticate via
+        # Airflow user database
+        return super().auth_user_db(username, password, **kwargs)
+
+
+class SonadorFabAuthManager(FabAuthManager):
+    """ Extends FAB AuthManager so FastAPI token minting can accept Sonador tokens directly.
+        JWT remains the on-wire token for /api/v2/* to allow for the Airflow UI and internal
+        API to work without modification.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sonador_conn = SONADOR_CONN
+        self.dataservice = SONADOR_DATA_SERVICE
+
+    @cached_property
+    def security_manager(self):        
+        security_manager = super().security_manager
+        if not isinstance(security_manager, SonadorSecurityManager):
+            raise ConfigurationError(('Invalid security manager instance. To use %s, the security manager '
+                + 'must be an instance of %s') % (type(self).__name__, SonadorSecurityManager.__name__))
+        
+        logger.info('SECURITY MANAGER: %s' % type(security_manager).__name__)
+        return security_manager
