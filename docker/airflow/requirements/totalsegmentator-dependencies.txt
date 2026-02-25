@@ -3,7 +3,7 @@
 sonador>=0.4.1
 pydicom>=2.4.4,<3.0
 dicom2nifti==2.5.1
-sonadoretl
+sonadoretl>=0.2.0
 s3fs
 boto
 psycopg2-binary==2.9.10
