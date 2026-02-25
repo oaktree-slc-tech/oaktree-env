@@ -20,13 +20,6 @@ RUN mkdir -p /home/airflow/env/requirements && cd /home/airflow/env \
     && /home/airflow/env/totalsegmentator/bin/pip install --no-user --no-cache --upgrade pip
 COPY requirements/totalsegmentator-dependencies.txt /home/airflow/env/requirements/
 RUN /home/airflow/env/totalsegmentator/bin/pip install --no-user -r /home/airflow/env/requirements/totalsegmentator-dependencies.txt
-RUN /home/airflow/env/totalsegmentator/bin/pip install --no-user totalsegmentator==2.12.0
-RUN /home/airflow/env/totalsegmentator/bin/pip install --no-user \
-    --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.1.5/constraints-3.10.txt" \
-    "apache-airflow-providers-amazon[s3fs]==9.18.0"
 
 # Copy helper scripts and modules to Total Segmentator env
-COPY src/airflow-api.sonador_auth.py home/airflow/env/totalsegmentator/lib/python3.10/site-packages/sonador_auth.py
-COPY src/airflow-api.sonador_hook.py home/airflow/env/totalsegmentator/lib/python3.10/site-packages/sonador_hook.py
-COPY src/airflow-api.object_storage_hook.py home/airflow/env/totalsegmentator/lib/python3.10/site-packages/object_storage_hook.py
 COPY src/airflow-totalsegmentator.execute.py home/airflow/env/totalsegmentator/airflow-totalsegmentator.execute.py

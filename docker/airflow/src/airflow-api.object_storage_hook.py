@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 S3_CONN_PARAM = 's3_conn_id'
 S3_CONN_ROOT_PARAM = 's3_root'
-S3_CONN_ROOT_DEFAULT = 's3://airflow'
+S3_CONN_ROOT_DEFAULT = 'airflow'
 CONN_TYPE_S3 = 'aws'
 
 
@@ -106,6 +106,7 @@ class ObjectStorageHook(BaseHook):
 				session.close()
 
 		except RuntimeError as e:
+			
 			# Airflow 3.0: Direct database access not allowed during DAG parsing
 			logger.debug('Database access not available during DAG parsing: %s', e)
 			default_conn = os.environ.get('S3_DEFAULT_CONN', 's3_default')
