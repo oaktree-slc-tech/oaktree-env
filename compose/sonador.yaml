@@ -19,7 +19,7 @@ services:
     - 8070:8070
     volumes:
     - ../config/sonador:/srv/www/sonador/config
-    - ../data/sonador/docroot/:/srv/www/sonador/config/docroot
+    - ../data/sonador/docroot/:/srv/www/sonador/docroot
     # Uncomment the line below to mount a local checkout of the Sonador Web Application
     # sources staged in ../src/sonador to enable local development.
     - ../src/sonador:/srv/www/sonador/sonador
