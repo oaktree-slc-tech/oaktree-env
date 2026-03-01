@@ -21,7 +21,7 @@ default_args = {
 
 
 # Initialize HelloWorld DAG
-dag = DAG('HelloWorld', default_args=default_args, tags=['sonador-example'], doc_md=__doc__)
+dag = DAG('SonadorExample01-HelloWorld', default_args=default_args, tags=['sonador-example'], doc_md=__doc__)
 
 
 # Define task stages

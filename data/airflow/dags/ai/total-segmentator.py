@@ -1,7 +1,150 @@
 '''
-# AI Example 1: Creating Semgntations using Total Segmentator from data stored in Sonador.
+# AI Example 1: Creating Semgntations using Total Segmentator from data stored in Sonador
+
+This DAG performs **end-to-end anatomical segmentation** on a DICOM series stored in **Sonador/Orthanc**, 
+runs **TotalSegmentator inference**, then converts the resulting labelmaps into **mesh (M3D) objects** that 
+are **DICOM-encoded and uploaded back to Sonador**.
+
+
+At a high level, the pipeline is split into three architectural phases:
+
+
+1. Preparation (Sonador → NIfTI → S3)
+2. Segmentation (TotalSegmentator inference in-container)
+3. Mesh processing + DICOM encoding (S3 → STL → M3D → Sonador)
+
+
+
+## Architecture and task flow
+
+
+### 1: Environment + connectivity verification
+Validates prerequisites before work begins:
+
+- Confirms the **Sonador connection** is usable and the imaging server can be initialized.
+- Confirms the **S3/Object Storage connection** is usable and the target bucket exists.
+  - Uses boto3 with the S3 connection details and creates the bucket if missing.
+
+This is a “fail fast” step: if credentials, endpoint URLs, or bucket config are wrong, the run stops here.
+
+
+### 2: Convert Sonador DICOM → nii.gz and stage to S3
+Pipeline:
+
+- Loads the target **series** from Sonador using series_uid.
+- Ensures modality is supported (**CT or MR**).
+- Downloads/loads the series and converts it to **NIfTI (.nii.gz)** using **SimpleITK**.
+- Uploads the .nii.gz into object storage under a temporary prefix.
+
+This step produces the inference-ready volume in S3, decoupling inference from Sonador’s backing store and 
+keeping the inference container “stateless” (everything is read/write via S3).
+
+
+### 3: Run TotalSegmentator inference (BASH in container)
+Inference is intentionally executed as a **BASH script** inside the Airflow worker container 
+image **`oaktreetech/sonador-airflow.ai`**
+
+- Executes the in-container entrypoint
+- Pulls connection details from Airflow at runtime:
+- Passes runtime parameters to the script
+  - Sonador API endpoint/token, imaging server name, optional internal DNS routing
+  - S3 endpoint/access/secret/bucket
+  - series_uid
+  - ROI/label list via --roi (JSON from totalsegmentator_labels)
+
+**Output:** segmentation labelmaps written back to S3 under the temporary prefix, which the next task consumes.
+
+
+### 4: Labelmaps → meshes → M3D DICOM upload
+Pipeline:
+
+- Lists segmentation outputs in S3 (under .../segmentations.<series_uid>...).
+- For each labelmap:
+  - Loads with **SimpleITK**
+  - Skips empty labelmaps (no labeled voxels)
+  - Converts labelmap → mesh via labelimg2mesh
+  - Repairs mesh with **pymeshfix**
+  - Applies **Taubin smoothing** (tunable)
+  - Saves to STL in a temp folder
+- Applies optional remapping + styling:
+  - totalsegmentator_labelmap (rename TotalSegmentator labels to preferred DICOM labels)
+  - m3d_dcm_num (force instance numbering)
+  - m3d_colors (set mesh color per label)
+- DICOM-encodes the meshes into an **M3D series** and uploads back to Sonador via dcm_encode_m3d_models, 
+  using any provided series/instance header overrides.
+
+
+
+## DAG parameters and inputs
+
+
+### Connections
+* `conn_id` *(string, enum)*  
+  Sonador connection ID used for retrieving metadata and initializing the imaging server.
+* `s3_conn_id` *(string, enum)*  
+  Object storage connection used for staging the `.nii.gz` and reading/writing segmentations.
+
+### Target series
+`series_uid` *(string)*  
+  Sonador/Orthanc Series Instance UID (the series to segment).
+
+### TotalSegmentator inference controls
+* `totalsegmentator_labels` *(array, default: `[]`)*  
+  List of TotalSegmentator label names to infer. Passed to inference as `--roi` JSON.
+* `totalsegmentator_labelmap` *(object|null, default `{}`)*  
+  Mapping from TotalSegmentator labels → alternative DICOM/clinical labels (normalizes naming for downstream use).
+
+### Mesh/M3D encoding controls
+* `m3d_colors` *(object|null, default `{}`)*  
+  Map `{ label -> "#RRGGBB" }` used for mesh coloring in the encoded M3D objects.
+* `m3d_dcm_num` *(object|null, default `{}`)*  
+  Map `{ label -> integer }` used to force deterministic instance numbering (useful for downstream automation).
+* `m3d_series_headers` *(object|null, default `{}`)*  
+  Extra DICOM series-level headers to apply when encoding the M3D series (e.g., Series Description).
+`m3d_series_num` *(integer, default `200`)*  
+  Series number used for the generated M3D series.
+`mesh_smooth_taubin_iter` *(integer, default `25`)*  
+  Taubin smoothing iterations (higher = smoother, but can oversmooth fine anatomy).
+`mesh_smooth_taubin_pass_band` *(number, default `0.025`)*  
+  Taubin smoothing pass band (lower = stronger smoothing per iteration; tune carefully).
+
+
+
+## Tuning guidance for different segmentation workloads
+For best results, it is recommended to tune the output of specific segmentation tasks. These can be
+implemented as separate DAGs which call the TotalSegmentator DAG to create the desired output.
+
+
+### 1: Choose the right label set for the job
+The biggest lever is `totalsegmentator_labels`:
+
+- **Targeted organ set (faster, less clutter):** provide only what you need (e.g., abdominal planning organs).
+- **Broad anatomical sweep (more outputs, more post-processing time):** provide many labels for exploratory workflows.
+
+Start narrow, then expand—mesh conversion and DICOM encoding cost scales with the number of non-empty labels.
+
+### 2: Normalize labels to your internal schema
+Use `totalsegmentator_labelmap` to translate TotalSegmentator naming into your preferred DICOM/clinical labels. 
+This keeps semantics stable across model versions and task presets.
+
+### 3: Make outputs deterministic for downstream automation
+If downstream rules depend on ordering or instance numbers:
+
+- Set m3d_dcm_num per label for stable instance numbering.
+- Set m3d_colors per label for consistent visualization.
+
+### 4: Balance mesh quality vs anatomical fidelity
+Mesh processing is robust by design (repair + smoothing), but smoothing can blur fine detail:
+
+- Increase mesh_smooth_taubin_iter if you see jagged/stair-step surfaces.
+- Decrease it (or increase mesh_smooth_taubin_pass_band) if thin structures lose definition.
+
+### 5: Encode useful context into DICOM metadata
+Use m3d_series_headers to embed intent into the M3D series (especially when generating multiple 
+segmentation series per patient), e.g., include a descriptive Series Description that indicates the task/dataset/run.
 
 '''
+
 import sys, os, logging, json, requests, re, fnmatch, zipfile, posixpath
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -363,7 +506,7 @@ t2 = BashOperator(task_id='totalsegmentator-execute', dag=dag, bash_command=r'''
 		--series-uid {{ params.series_uid }} {% if license %}--totalsegmentator-license '{{ license }}'{% endif %} \
 		--roi '{{ params.totalsegmentator_labels | tojson }}'
 	''')
-t3 = PythonOperator(task_id='totalesegmentator-m3d-series', 
+t3 = PythonOperator(task_id='totalsegmentator-m3d-series', 
 	python_callable=sonador_totalsegmentator_create_m3d_series, dag=dag)
 
 
