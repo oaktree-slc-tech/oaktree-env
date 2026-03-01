@@ -1,5 +1,5 @@
 '''
-# AI Example 1: Creating Semgntations using Total Segmentator from data stored in Sonador
+# AI Example 1: Creating Segmentations using Total Segmentator from data stored in Sonador
 
 This DAG performs **end-to-end anatomical segmentation** on a DICOM series stored in **Sonador/Orthanc**, 
 runs **TotalSegmentator inference**, then converts the resulting labelmaps into **mesh (M3D) objects** that 
@@ -82,30 +82,30 @@ Pipeline:
 * `conn_id` *(string, enum)*  
   Sonador connection ID used for retrieving metadata and initializing the imaging server.
 * `s3_conn_id` *(string, enum)*  
-  Object storage connection used for staging the `.nii.gz` and reading/writing segmentations.
+  Object storage connection used for staging the .nii.gz and reading/writing segmentations.
 
 ### Target series
-`series_uid` *(string)*  
+* `series_uid` *(string)*  
   Sonador/Orthanc Series Instance UID (the series to segment).
 
 ### TotalSegmentator inference controls
-* `totalsegmentator_labels` *(array, default: `[]`)*  
-  List of TotalSegmentator label names to infer. Passed to inference as `--roi` JSON.
-* `totalsegmentator_labelmap` *(object|null, default `{}`)*  
+* `totalsegmentator_labels` *(array, default: [])*  
+  List of TotalSegmentator label names to infer. Passed to inference as "--roi" JSON.
+* `totalsegmentator_labelmap` *(object|null, default {})*  
   Mapping from TotalSegmentator labels → alternative DICOM/clinical labels (normalizes naming for downstream use).
 
 ### Mesh/M3D encoding controls
-* `m3d_colors` *(object|null, default `{}`)*  
+* `m3d_colors` *(object|null, default {})*  
   Map `{ label -> "#RRGGBB" }` used for mesh coloring in the encoded M3D objects.
-* `m3d_dcm_num` *(object|null, default `{}`)*  
+* `m3d_dcm_num` *(object|null, default {})*  
   Map `{ label -> integer }` used to force deterministic instance numbering (useful for downstream automation).
-* `m3d_series_headers` *(object|null, default `{}`)*  
+* `m3d_series_headers` *(object|null, default {})*  
   Extra DICOM series-level headers to apply when encoding the M3D series (e.g., Series Description).
-`m3d_series_num` *(integer, default `200`)*  
+* `m3d_series_num` *(integer, default 200)*  
   Series number used for the generated M3D series.
-`mesh_smooth_taubin_iter` *(integer, default `25`)*  
+* `mesh_smooth_taubin_iter` *(integer, default 25)*  
   Taubin smoothing iterations (higher = smoother, but can oversmooth fine anatomy).
-`mesh_smooth_taubin_pass_band` *(number, default `0.025`)*  
+* `mesh_smooth_taubin_pass_band` *(number, default 0.025)*  
   Taubin smoothing pass band (lower = stronger smoothing per iteration; tune carefully).
 
 
@@ -116,7 +116,7 @@ implemented as separate DAGs which call the TotalSegmentator DAG to create the d
 
 
 ### 1: Choose the right label set for the job
-The biggest lever is `totalsegmentator_labels`:
+The biggest lever is **totalsegmentator_labels**:
 
 - **Targeted organ set (faster, less clutter):** provide only what you need (e.g., abdominal planning organs).
 - **Broad anatomical sweep (more outputs, more post-processing time):** provide many labels for exploratory workflows.
@@ -124,7 +124,7 @@ The biggest lever is `totalsegmentator_labels`:
 Start narrow, then expand—mesh conversion and DICOM encoding cost scales with the number of non-empty labels.
 
 ### 2: Normalize labels to your internal schema
-Use `totalsegmentator_labelmap` to translate TotalSegmentator naming into your preferred DICOM/clinical labels. 
+Use **totalsegmentator_labelmap** to translate TotalSegmentator naming into your preferred DICOM/clinical labels. 
 This keeps semantics stable across model versions and task presets.
 
 ### 3: Make outputs deterministic for downstream automation
