@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+
+  # PostgreSQL with PgVector Extension
+  contextdb-pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: agentic-db-postgres
+    environment:
+      POSTGRES_USER: contextdb
+      POSTGRES_PASSWORD: agentic-ai.sonador
+      POSTGRES_DB: contextdb
+    volumes:
+    - contextdb_pgvector_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Context Augmentation Database
+  context-db:
+    image: oaktreetech/agentic-ai.contextdb
+    build:
+      context: ../docker/context-db/
+      dockerfile: ../docker/context-db/Dockerfile
+    
+    ports:
+    - 8072:8072
+    
+    environment:
+      
+      # PostgreSQL Connection
+      DATABASE_URL: "postgresql://contextdb:agentic-ai.sonador@contextdb-pgvector:5432/contextdb"
+
+      # Sonador
+      SONADOR_URL: "http://imaging:8070"
+      SONADOR_APITOKEN: "secure-api@sonador-dev"
+      SONADOR_IMAGING_SERVER: "dev01"
+      SONADOR_SERVICE_CLIENT_ID: "contextdb"
+
+      # FastAPI Application Config
+      FASTAPI_APP_ENCRYPTION_SECRET: "agentic-ai@contextdb-augmentation#sonador"
+      FASTAPI_SAME_SITE: lax
+      FASTAPI_HTTPS_ONLY: "False"
+      FASTAPI_BACKGROUND_WORKERS: 2
+
+    depends_on:
+      contextdb-pgvector:
+        condition: service_healthy
+
+volumes:
+  contextdb_pgvector_data:
