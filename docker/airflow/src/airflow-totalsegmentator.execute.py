@@ -86,20 +86,22 @@ def execute_cmd(cmd, bufsize=1, universal_newlines=True):
 		raise err
 
 
-def sonador_totalsegmentator_execute(args, series_uid, totalsegmentator_labels,
-		totalsegmentator_license=None, totalsegmentator_device='cpu', tmp_prefix='totalsegmentator/tmp'):
+def sonador_totalsegmentator_execute(args, series_uid, totalsegmentator_labels=None, totalsegmentator_model=None,
+		totalsegmentator_license=None, totalsegmenator_license_skip_validation=None, 
+		totalsegmentator_device='cpu', tmp_prefix='totalsegmentator/tmp'):
 	'''	Execute segmentation of a Sonador series as part of an Airflow DAG.
 	'''
 
 	# Register Total Segmentator (if license provided)
 	if totalsegmentator_license:
-		execute_cmd([
-			'/home/airflow/env/totalsegmentator/bin/totalseg_set_license', '-l', totalsegmentator_license,
-		])
+		_license = ['/home/airflow/env/totalsegmentator/bin/totalseg_set_license', '-l', totalsegmentator_license,]
+		if totalsegmenator_license_skip_validation:
+			_license.append('--skip_validation')
+	
+		# Register Total Segmentator license
+		execute_cmd(_license)
 
 	# Unpack Total Segmentator labels
-	if not totalsegmentator_labels:
-		raise ValueError('Unable to execute Total Segmentator pipeline, no labels provided')
 	if isinstance(totalsegmentator_labels, str):
 		totalsegmentator_labels = json.loads(totalsegmentator_labels)
 
@@ -149,9 +151,14 @@ def sonador_totalsegmentator_execute(args, series_uid, totalsegmentator_labels,
 			'/home/airflow/env/totalsegmentator/bin/TotalSegmentator',
 			'--device', totalsegmentator_device, 
 			'-i', sx_filepath, '-o', seg_outfpath,
-			'--roi_subset'
 		]
-		cmd.extend(totalsegmentator_labels)
+		
+		# Model and labels to be used for inference
+		if totalsegmentator_model:
+			cmd.extend(['--ta', totalsegmentator_model])
+		if totalsegmentator_labels:
+			cmd.extend(['--roi_subset'])
+			cmd.extend(totalsegmentator_labels)
 
 		logger.info('Total Segmenator cmd:\n%s' % ' '.join(cmd))
 		execute_cmd(cmd)
@@ -207,13 +214,17 @@ if __name__ == '__main__':
 
 	parser.add_argument('--series-uid', required=True, dest='series_uid',
 		help='Sonador/Orthanc UID of the series to be segmented')
-	parser.add_argument('--roi', required=True, dest='totalsegmentator_labels',
+	parser.add_argument('--model', required=False, dest='totalsegmentator_model', default=None,
+		help='Total Segmentator model to use for inference.')
+	parser.add_argument('--roi', required=False, dest='totalsegmentator_labels', default=None,
 		help='Total Segmentator regions of interest to be processed')
 	parser.add_argument('--device', default='cpu', dest='device',
 		help='Compute device which Total Segmentator will be run on.')
 	parser.add_argument('--totalsegmentator-license', dest='license', default=None,
 		help='Total Segmenator license to use while running inference. If present, Total Segmentator '
 			+ 'is able to access private models for segmentation tasks.')
+	parser.add_argument('--totalsegmentator-license-skip-validation', dest='license_skip_validation', action='store_true', default=None,
+		help='Skip Total Segmentator license validation step.')
 
 	# Parse args and validate
 	args = parser.parse_args()
@@ -241,8 +252,8 @@ if __name__ == '__main__':
 	try:
 		
 		# Run TotalSegmentator
-		sonador_totalsegmentator_execute(args, args.series_uid,
-			totalsegmentator_license=args.license, totalsegmentator_labels=args.totalsegmentator_labels,
+		sonador_totalsegmentator_execute(args, args.series_uid, totalsegmentator_license=args.license,
+			totalsegmentator_model=args.totalsegmentator_model, totalsegmentator_labels=args.totalsegmentator_labels,
 			totalsegmentator_device=args.device)
 
 	except Exception as err:

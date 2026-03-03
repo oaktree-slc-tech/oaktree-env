@@ -89,6 +89,10 @@ Pipeline:
   Sonador/Orthanc Series Instance UID (the series to segment).
 
 ### TotalSegmentator inference controls
+* `totalsegmentator_options` *(array, default: [])*
+	Array of Total Segmentator models and labels to be used in inference.
+* `totalsegmentator_model` (*str*, default None)
+  Model to be used for inference. If not model specified total or total_mr will be used.
 * `totalsegmentator_labels` *(array, default: [])*  
   List of TotalSegmentator label names to infer. Passed to inference as "--roi" JSON.
 * `totalsegmentator_labelmap` *(object|null, default {})*  
@@ -152,6 +156,7 @@ from io import BytesIO
 from collections import namedtuple
 
 from airflow import DAG
+from airflow.decorators import task
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.standard.operators.python import PythonOperator, ExternalPythonOperator, BranchPythonOperator
 from airflow.models import Variable
@@ -251,15 +256,18 @@ def sonador_prepare_totalsegmentator_data(**kwargs):
 
 	from sonador_hook import SonadorHook
 	from object_storage_hook import ObjectStorageHook
+	
+	from airflow.operators.python import get_current_context
 	from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 	from sonador.apisettings import DCM_MODALITY_MR, DCM_MODALITY_CT
 	from sonador3d.imaging.volume import SonadorImagingVolume
 
 	# Unpack DAG parameters
-	params = kwargs.get('params', {})
+	context = get_current_context()
+	params = context.get('params', {})
 	sx_uid = params.get('series_uid')
-	tmp_prefix = kwargs.get('tmp_prefix') or params.get('tmp_prefix', 'totalsegmentator/tmp')
+	tmp_prefix = Variable.get('SONADOR_TOTALSEGMENTATOR_TMP_PREFIX', 'totalsegmentator/tmp')
 	if not sx_uid:
 		raise ValueError('Unable to perform segmentation. Invalid series UID: "%s"' % sx_uid)
 	if not tmp_prefix:
@@ -298,6 +306,58 @@ def sonador_prepare_totalsegmentator_data(**kwargs):
 		))
 
 
+@task(task_id='totalsegmentator-map-inference-options')
+def sonador_totalsegmentator_inference_ops(**kwargs):
+	'''	Parse the provided inference array and map arguments to TotalSegmentator run parameters
+			for execution.
+	'''
+	from airflow.operators.python import get_current_context
+
+	context = get_current_context()
+	params = context.get('params', {})
+	totalsegmentator_options = list(params.get('totalsegmentator_options') or [])
+
+	# Add Single-Run Total Segmentator model and label options to options array
+	if params.get('totalsegmentator_model') or params.get('totalsegmentator_labels'):
+		_run = {}
+		if params.get('totalsegmentator_model'):
+			_run['model'] = params.get('totalsegmentator_model')
+		if params.get('totalsegmentator_labels'):
+			_run['labels'] = params.get('totalsegmentator_labels')
+
+		# Add legacy run options to inference command
+		totalsegmentator_options.append(_run)
+
+	# Validate inference options
+	_totalseg_inference_cmd = []
+	for i, _opt in enumerate(totalsegmentator_options):
+		name = _opt.get('name', f'run-{i}').replace(' ', '-')
+		model = _opt.get('model')
+		labels = _opt.get('labels', [])
+		if not isinstance(labels, (list, tuple)):
+			raise ValueError('Inavlid Total Segmentator label array. "labels" must be an array.')
+
+		# Ensure that the command contains either a model or label argument
+		if not model and not labels:
+			raise ValueError('Invalid Total Segmentator inference command. Inference commands '
+				+ 'must have either a model task or labels array.')
+
+		# For specialty models (not 'total' ot 'total_mr'), throw an error if there is
+		# a labels array.
+		if model and labels and not model in ('total', 'total_mr'):
+			raise ValueError('Invalid Total Segmentator inference command. Labels arrays '
+				+ 'may only be used with the "total" and "total_mr" models.')
+
+		# Pack inference command
+		_cmd = {'name': name, 'labels': list(labels)}
+		if model:
+			_cmd['model'] = model
+
+		_totalseg_inference_cmd.append(_cmd)
+
+	return _totalseg_inference_cmd
+
+
 def sonador_totalsegmentator_create_m3d_series(**kwargs):
 	''' Create an M3D series from Total Segmentator data saved to S3 object storage. Pipelin.
 
@@ -313,6 +373,7 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 	import numpy as np
 	import pymeshfix
 
+	from airflow.operators.python import get_current_context
 	from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 	from sonador_hook import SonadorHook
@@ -324,8 +385,11 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 
 	from sonador3d.spatial.helpers import labelimg2mesh
 
+	# Retrieve context
+	context = get_current_context()
+
 	# Unpack DAG parameters
-	params = kwargs.get('params', {})
+	params = context.get('params', {})
 	sx_uid = params.get('series_uid')
 	stl_sx_nums = kwargs
 	if not sx_uid:
@@ -333,8 +397,8 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 
 	# Retrieve mesh parameters
 	totalsegmentator_labelmap = params.get('totalsegmentator_labelmap') or {}
-	m3d_colors = params.get('m3d_colors')
-	m3d_dcm_num = params.get('m3d_dcm_num')
+	m3d_colors = params.get('m3d_colors') or {}
+	m3d_dcm_num = params.get('m3d_dcm_num') or {}
 	m3d_series_headers = params.get('m3d_series_headers') or {}
 	m3d_instance_headers = params.get('m3d_instance_headers') or {}
 	m3d_series_num = params.get('m3d_series_num')
@@ -342,7 +406,7 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 	mesh_smooth_taubin_pass_band = params.get('mesh_smooth_taubin_pass_band')
 
 	# DAG options
-	tmp_prefix = kwargs.get('tmp_prefix') or params.get('tmp_prefix', 'totalsegmentator/tmp')
+	tmp_prefix = Variable.get('SONADOR_TOTALSEGMENTATOR_TMP_PREFIX', 'totalsegmentator/tmp')
 	if not tmp_prefix:
 		raise ValueError(
 			'Unable to perform segmentation. Invalid Total Segmentator tmp prefix: "%s"' % tmp_prefix)
@@ -379,7 +443,7 @@ def sonador_totalsegmentator_create_m3d_series(**kwargs):
 			
 			# Instance numbering and color
 			stl_num = m3d_dcm_num.get(stl_label) if m3d_dcm_num.get(stl_label) else i
-			stl_color = m3d_colors.get(stl_label) if m3d_colors.get(stl_label) else ANATOMY_BONE_HEXCOLOR			
+			stl_color = m3d_colors.get(stl_label) if m3d_colors.get(stl_label) else ANATOMY_BONE_HEXCOLOR
 
 			# Retrieve segmentation, write to local storage to allow for loading with SimpleITK,
 			# and convert to mesh using labelimg2mesh			
@@ -447,7 +511,8 @@ default_args = {
 
 
 # Initialize TotalSegmentator DAG
-dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule=None, params={
+dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule=None, 
+	doc_md=__doc__, max_active_tasks=2, user_defined_macros={ 'str2bool': str2bool }, params={
 
 	# Sonador and S3 connections
 	'conn_id': Param(type='string', enum=available_sonador_connections, 
@@ -461,10 +526,22 @@ dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule=None, 
 
 	# Series
 	'series_uid': Param(type='string', description='Sonador/Orthanc UID of the series to be segmented.'),
-
+	
 	# Total Segmentator options
+	'totalsegmentator_options': Param(type='array', default=[], 
+		description='Total Segmentator model/labels to be inferred during processing from multiple models.'
+			+ 'Passed as array of Total Segmentator models and labels in JSON format. Example: ' 
+			+ '[{"name": "bones", "model": "total_mr", "labels": ["tibia"]}].'),
+
+	# Options allowing inference for a single model
+	'totalsegmentator_model': Param(type='string', default='',
+		description='Total Segmentator model: determines which labels are avilable for prediction. '
+			+'By default, the "Total" and "Total MR" models are used. Other supported options include: '
+			+ '"appendicular_bones", "appendicular_bones_mr", "body", "body_mr", "liver_vessels", and "teeth". '
+			+ 'Refer to TotalSegmentator documentation for a complete list.'),
 	'totalsegmentator_labels': Param(type='array', default=[],
 		description='Total Segmentator labels to be inferred during processing. One per line.'),
+
 	'totalsegmentator_labelmap': Param(type=['object', 'null'], default={},
 		description='Hashmap of Total Segmentator labels to an alternative DCM label which should be '
 			+ 'used when creating mesh instances. Values should be keyed to Total Segmentator labels.'),
@@ -480,37 +557,46 @@ dag = DAG('Sonador-TotalSegmentator', default_args=default_args, schedule=None, 
 		description='Number of iterations for which the Taubin smoothing algorithm should be applied.'),
 	'mesh_smooth_taubin_pass_band': Param(type='number', default=0.025,
 		description='Band pass filter value to apply to the Taubin smoothing in the mesh pipeline.')
-}, tags=['sonador-io', 'sonador-ai', 'm3d', 'dcm-segmentation'], doc_md=__doc__)
+}, tags=['sonador-io', 'sonador-ai', 'm3d', 'dcm-segmentation'])
 
 
 # Define task steps
 l0 = PythonOperator(task_id='totalsegmentator-verify-env', python_callable=verify_etl_env, dag=dag)
 t1 = PythonOperator(task_id='totalsegmentator-prepare-seg-data', 
 	python_callable=sonador_prepare_totalsegmentator_data, dag=dag)
-t2 = BashOperator(task_id='totalsegmentator-execute', dag=dag, bash_command=r'''
-		{% set license = var.value.get('SONADOR_TOTALSEGMENTATOR_LICENSE', '') %}		
-		{% set sonador = conn[params.conn_id] %}
-		{% set sonadorx = sonador.extra_dejson or {} %}
-		{% set s3 = conn[params.s3_conn_id] %}
-		{% set s3x = s3.extra_dejson or {} %}
 
-		/home/airflow/env/totalsegmentator/bin/python3 \
-		/home/airflow/env/totalsegmentator/bin/airflow-totalsegmentator.execute.py \
-		--api-endpoint "{{ sonador.schema }}://{{ sonador.host }}:{{ sonador.port }}" \
-		--api-token "{{ sonador.password }}" {% if sonadorx.get('SONADOR_INTERNAL_DNS', False) %}--internal-dns{% endif %} \
-		--server "{{ sonadorx.get('SONADOR_IMAGING_SERVER', '') }}" \
-		--storage-endpoint "{{ s3x.get('endpoint_url', '') }}" \
-		--storage-access-id "{{ s3x.get('aws_access_key_id', '') }}" \
-		--storage-secret-key "{{ s3x.get('aws_secret_access_key', '') }}" \
-		--storage-bucket "{{ s3x.get('OBJECTS_BUCKET', 'airflow') }}" \
-		--series-uid {{ params.series_uid }} {% if license %}--totalsegmentator-license '{{ license }}'{% endif %} \
-		--roi '{{ params.totalsegmentator_labels | tojson }}'
-	''')
+# Total Segmentator Model Inference
+t_ops = sonador_totalsegmentator_inference_ops()
+
+t2 = BashOperator.partial(task_id='totalsegmentator-execute', dag=dag, bash_command=r'''
+{% set license = var.value.get('SONADOR_TOTALSEGMENTATOR_LICENSE', '') %}
+{% set license_skip_validation = str2bool(var.value.get('SONADOR_TOTALSEGMENTATOR_LICENSE_SKIP_VALIDATION', 'False')) %}
+{% set sonador = conn[params.conn_id] %}
+{% set sonadorx = sonador.extra_dejson or {} %}
+{% set s3 = conn[params.s3_conn_id] %}
+{% set s3x = s3.extra_dejson or {} %}
+{% set run = params.run %}
+
+/home/airflow/env/totalsegmentator/bin/python3 \
+/home/airflow/env/totalsegmentator/bin/airflow-totalsegmentator.execute.py \
+--api-endpoint "{{ sonador.schema }}://{{ sonador.host }}:{{ sonador.port }}" \
+--api-token "{{ sonador.password }}" {% if sonadorx.get('SONADOR_INTERNAL_DNS', False) %}--internal-dns{% endif %} \
+--server "{{ sonadorx.get('SONADOR_IMAGING_SERVER', '') }}" \
+--storage-endpoint "{{ s3x.get('endpoint_url', '') }}" \
+--storage-access-id "{{ s3x.get('aws_access_key_id', '') }}" \
+--storage-secret-key "{{ s3x.get('aws_secret_access_key', '') }}" \
+--storage-bucket "{{ s3x.get('OBJECTS_BUCKET', 'airflow') }}" \
+--series-uid {{ params.series_uid }} {% if license %}--totalsegmentator-license "{{ license }}"{% endif %} {% if license_skip_validation %}--totalsegmentator-license-skip-validation{% endif %} \
+{% if run.get('model') %}--model "{{ run['model'] }}"{% endif %} --roi '{{ run.get('labels', []) | tojson }}'
+''', pool='ai_inference_pool', pool_slots=1) \
+.expand(params=t_ops.map(lambda r: {'run': r }))
+
 t3 = PythonOperator(task_id='totalsegmentator-m3d-series', 
 	python_callable=sonador_totalsegmentator_create_m3d_series, dag=dag)
 
 
 # Order tasks
 l0.set_downstream(t1)
-t1.set_downstream(t2)
+t1.set_downstream(t_ops)
+t_ops.set_downstream(t2)
 t2.set_downstream(t3)
