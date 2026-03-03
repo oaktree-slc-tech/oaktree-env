@@ -14,8 +14,10 @@ RUN apt-get install -y cmake swig rapidjson-dev libtbb-dev \
 	&& cd /tmp && rm -rf /tmp/src
 
 # Install Computer Vision Libraries
-COPY requirements/scientific-computer-vision.txt /opt/root/requirements/
-RUN pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/scientific-computer-vision.txt
+COPY requirements/scientific-computer-vision.txt \
+	requirements/jupyterlab-computer-vision.txt /opt/root/requirements/
+RUN pip3 --no-cache-dir install --break-system-packages -r /opt/root/requirements/scientific-computer-vision.txt \
+	-r /opt/root/requirements/jupyterlab-computer-vision.txt
 RUN apt-get install -y gimp
 
 USER 1000

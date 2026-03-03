@@ -1,29 +1,25 @@
-from oaktreetech/sonador-airflow
+FROM oaktreetech/sonador-airflow
 USER root
 
+
 # Install Sonador 3D and PyVista for mesh processing
-RUN apt-get install -y libx11-6 libx11-dev libgl1 libxrender1 libxrender-dev \
-	&& pip3 install "sonador>=0.4.0b4" "sonador3d>=0.3.0a1" "pyvista>=0.44.2" "meshio" "pymeshfix" \
-		--extra-index-url https://code.oak-tree.tech/api/v4/projects/335/packages/pypi/simple --no-user	
+COPY requirements/ai.txt /opt/root/requirements/
+RUN apt-get update \
+    && apt-get install -y \
+        build-essential gcc g++ libx11-6 libx11-dev libgl1 libxrender1 libxrender-dev xvfb \
+    && pip3 install -r /opt/root/requirements/ai.txt --no-user
 
 # Create virtual environment and install Total Segmentator. Amazon provider libraries
 # are also installed so that AI segmentation tasks can use S3 comptaible object storage
 # for temp files during processing. Sonador is also installed so it can be used for publishing
 # artifacts after processing is complete.
 USER airflow
-RUN mkdir $HOME/env && cd $HOME/env \
-	&& python3 -m venv $HOME/env/totalsegmentator \
-	&& $HOME/env/totalsegmentator/bin/pip install --upgrade pip \
-	&& $HOME/env/totalsegmentator/bin/pip install "sonador>=0.4.0b3" \
-		"apache-airflow==2.10.3" "boto3==1.34.90" "psycopg2-binary==2.9.10" \
-		--extra-index-url https://code.oak-tree.tech/api/v4/projects/335/packages/pypi/simple \
-	&& $HOME/env/totalsegmentator/bin/pip install totalsegmentator==2.5.0 torch==2.5.1
-
-# Install Airflow providers for AWS in Total Segmentator env
-RUN $HOME/env/totalsegmentator/bin/pip install "apache-airflow-providers-amazon[s3fs]==9.0.0"
+RUN pip install airflow-ai-sdk[openai] --upgrade pip
+RUN mkdir -p /home/airflow/env/requirements && cd /home/airflow/env \
+    && python3 -m venv /home/airflow/env/totalsegmentator \
+    && /home/airflow/env/totalsegmentator/bin/pip install --no-user --no-cache --upgrade pip
+COPY requirements/totalsegmentator-dependencies.txt /home/airflow/env/requirements/
+RUN /home/airflow/env/totalsegmentator/bin/pip install --no-user -r /home/airflow/env/requirements/totalsegmentator-dependencies.txt
 
 # Copy helper scripts and modules to Total Segmentator env
-COPY airflow-api.sonador_auth.py home/airflow/env/totalsegmentator/lib/python3.10/site-packages/sonador_auth.py
-COPY airflow-api.sonador_hook.py home/airflow/env/totalsegmentator/lib/python3.10/site-packages/sonador_hook.py
-COPY airflow-api.object_storage_hook.py home/airflow/env/totalsegmentator/lib/python3.10/site-packages/object_storage_hook.py
-COPY airflow-totalsegmentator.execute.py home/airflow/env/totalsegmentator/airflow-totalsegmentator.execute.py
+COPY src/airflow-totalsegmentator.execute.py home/airflow/env/totalsegmentator/airflow-totalsegmentator.execute.py

@@ -1,0 +1,6 @@
+--extra-index-url https://code.oak-tree.tech/api/v4/projects/335/packages/pypi/simple
+
+sonador3d>=0.3.0a1
+pyvista
+meshio
+pymeshfix

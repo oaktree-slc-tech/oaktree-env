@@ -22,29 +22,40 @@ version: '3.8'
 x-airflow-common:
   &airflow-common
   image: oaktreetech/sonador-airflow
-  environment:
-    &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
-    AIRFLOW__CELERY__BROKER_URL: amqp://guest:guest@message-broker:5672
-    AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__API__AUTH_BACKENDS: 'sonador_auth'
-    _AIRFLOW_WWW_USER_USERNAME: 'dev01'
-    _AIRFLOW_WWW_USER_PASSWORD: 'sonador@development-env'
-    SONADOR_URL: "http://imaging:8070"
-    SONADOR_APITOKEN: "secure-api@sonador-dev"
-    SONADOR_SERVICE_CLIENT_ID: 'airflow'
 
   volumes:
   - ../data/airflow/dags/io:/opt/airflow/dags/sonador
   - ../data/airflow/logs:/opt/airflow/logs
   - ../data/airflow/plugins:/opt/airflow/plugins
-  - ../docker/airflow/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py:ro
-  - ../docker/airflow/airflow-api.sonador_hook.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py:ro
-  - ../docker/airflow/airflow-api.object_storage_hook.py:/home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py:ro  
+  - ../docker/airflow/src/airflow-api.sonador_auth.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py:ro
+  - ../docker/airflow/src/airflow-api.sonador_hook.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py:ro
+  - ../docker/airflow/src/sonador-sso.webserver_config.py:/home/airflow/.local/lib/python3.10/site-packages/sonador_sso.py:ro
+  - ../docker/airflow/src/airflow-api.object_storage_hook.py:/home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py:ro  
+
+  environment:
+    &airflow-common-env
+
+    # Celery task runner and results database
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: amqp://guest:guest@message-broker:5672
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+
+    # API configuration
+    AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
+    AIRFLOW__API__SECRET_KEY: 'sonador.airflow-api-secret'
+    AIRFLOW__API_AUTH__JWT_SECRET: 'sonador.airflow-api-secret'
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__FAB__CONFIG_FILE: /home/airflow/.local/lib/python3.10/site-packages/sonador_sso.py
+    AIRFLOW__API__AUTH_BACKENDS: 'sonador_auth'
+
+    # Sonador API / Data Service
+    SONADOR_URL: "http://imaging:8070"
+    SONADOR_APITOKEN: "secure-api@sonador-dev"
+    SONADOR_SERVICE_CLIENT_ID: 'airflow'   
   
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
   depends_on:
@@ -69,11 +80,10 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
-    command: webserver
+    command: api-server
     ports:
     - 8060:8080
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+    healthcheck:      
       interval: 10s
       timeout: 10s
       retries: 5
@@ -108,8 +118,26 @@ services:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
 
   flower:
     <<: *airflow-common

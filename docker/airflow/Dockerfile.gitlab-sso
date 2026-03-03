@@ -1,8 +1,0 @@
-FROM oaktreetech/sonador-airflow
-
-# Install dependencies needed for OpenID connect authentication.
-RUN pip3 install flask-oidc aiohttp
-
-# Copy the OIDC webserver_config.py into the container's $AIRFLOW_HOME
-COPY --chown=airflow:airflow gitlab-sso.webserver_config.py $AIRFLOW_HOME/webserver_config.py
-RUN chmod 664 $AIRFLOW_HOME/webserver_config.py
