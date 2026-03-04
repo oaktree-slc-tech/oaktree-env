@@ -1,5 +1,4 @@
 # Sonador Context Augmentation Database
-
 Start API server:
 
 ```bash
@@ -63,7 +62,73 @@ Once configured, you can test the SSO integration by attempting to access the `/
 
 
 ### Authentication
-The Context Augmentation Database API uses Sonador API tokens for authentication with both permanent (`api-token`) and HMAC-SHA256 session tokens supported as options. Tokens should be attached to the request as `Bearer` tokens using the `Authentication` header. Examples:
+The Context-Augmentation Database API uses Sonador API tokens for authentication with both permanent (`api-token`) and HMAC-SHA256 session tokens supported as options. Tokens should be attached to the request as `Bearer` tokens using the `Authentication` header. Examples:
 
 * session token: `Authorization: Bearer  InBnZHJ0bzNkYXlzcG1uZWJxdDh6Z28zMzY0eGQ0bTR1Ig:1pkn9X:8_3LjBTDUAbWe-LrrWxgQ-Cm14RnXl6KSq7vmuXMmGs`
 * permanent API token: `Authorization: Bearer api-token x73Gqshay2NVZH7SD1xNN2wgt4Vh8B5rRuwrPW5LL0upkAE4UgEf06u6Gqp2ZKxJ`
+
+
+
+## Database
+The Context-Augmentation API uses PostgreSQL as its primary relational datastore and the PgVector extension to support high-performance vector similarity search. PgVector adds a native vector column type and efficient distance operators that allow ContextDB to perform embedding proximity searches directly within PostgreSQL.
+
+The database schema is managed using Alembic migrations, which create and maintain the required tables and indexes. The following steps will guide you through preparing the database and initializing the schema.
+
+
+#### Deploy PostgreSQL with PgVector
+The Context Augmentation Database API requires PostgreSQL with the PgVector extension installed. You can either:
+
+* Install PgVector manually on an existing PostgreSQL instance, or
+* Use the official PgVector container image (`pgvector/pgvector`), which includes the extension pre-installed.
+
+The simplest approach is to run the container image:
+
+```bash
+docker run -d \
+  --name contextdb-postgres \
+  -p 5432:5432 \
+  -e POSTGRES_USER=contextdb \
+  -e POSTGRES_PASSWORD=contextdb \
+  -e POSTGRES_DB=contextdb \
+  pgvector/pgvector:pg16
+```
+
+This image provides PostgreSQL 16 with PgVector already available. _The [Oak-Tree Development Environment](https://code.oak-tree.tech/oak-tree/medical-imaging/imaging-development-env) includes a [Docker Compose manifest](https://code.oak-tree.tech/oak-tree/medical-imaging/imaging-development-env/-/tree/master/compose?ref_type=heads) which shows how the database can be deployed alongside the Context-Augmentation FastAPI application._
+
+#### Enable the PgVector Extension
+After the database is running, enable the vector extension within the target database.
+First, connect to the container:
+
+```bash
+docker exec -it contextdb-postgres psql -U contextdb -d contextdb
+```
+
+Then run the following SQL command:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+This registers the PgVector data type and vector similarity operators within the database.
+
+#### Initialize the Database Schema
+Context Augmentation Database uses Alembic to manage database migrations.
+
+Once the database and PgVector extension are available, run the migrations to create the required schema.
+
+From the project root:
+
+```bash
+alembic upgrade head
+```
+
+This will create all tables and indexes required for operation.
+
+#### Verify Installation
+After migrations complete, the database should contain the tables and be ready for use. You can verify the PgVector extension is active by running:
+
+```sql
+SELECT * FROM pg_extension WHERE extname = 'vector';
+```
+
+You should see a row indicating the vector extension is installed. At this point, the database is fully configured and ready to store embeddings and perform vector similarity searches.
