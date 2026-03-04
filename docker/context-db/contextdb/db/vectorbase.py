@@ -18,7 +18,7 @@ class VectorEmbeddingBaseMixin:
 	'''	Mixin class providing identifiers and common fields for AI context
 		augmentation models to be used with Sonador.		
 	'''
-	uid = Colum(SqlString(64), primary_key=True, unique=True)
+	uid = Column(SqlString(64), primary_key=True, unique=True)
 	ctime = Column(SqlDateTime(), nullable=True)
 	mtime = Column(SqlDateTime(), nullable=True)
 
