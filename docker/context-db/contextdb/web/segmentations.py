@@ -17,7 +17,7 @@ from client.errors import ClientOperationError
 from sonador.apisettings import DCM_MODALITY_M3D, DCM_MODALITY_SEG
 
 from sonador_fastapi.auth import check_dataservice_group, check_dataservice_user_group
-from sonador_fastapi.db import apply_query_pagination
+from sonador_fastapi.db import apply_query_pagination, model_update_from_dict
 
 from ..db.segmentations import SeriesSegmentationEmbedding
 from ..schemas.segmentations import SeriesSegmentationEmbeddingResponse, SeriesSegmentationEmbeddingRequestAction, \
@@ -35,8 +35,9 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 		@input sonador_dataservice_oidc: Sonador dataservice OIDC client
 	'''
 
+	
 	@app.get('/embeddings/{group}/seg/{model_label}/{model_version}', response_model=List[SeriesSegmentationEmbeddingResponse], 
-		tags=['embeddings', 'segmentations'], summary='Retrieve image segmentation embeddings')
+		tags=['segmentations'], summary='Retrieve image segmentation embeddings')
 	async def list_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
@@ -61,8 +62,9 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			_query = apply_query_pagination(_query, page=page, items=items)
 			return _query.all()
 
-	@app.post('/embeddings/{group}/seg', status_code=201, tags=['embeddings', 'segmentations'], 
-			summary='Create image segmentation embedding', response_model=SeriesSegmentationEmbeddingResponse)
+	
+	@app.post('/embeddings/{group}/seg', status_code=201, summary='Create image segmentation embedding', 
+			response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
 	async def create_seg_embedding(request: Request, group: int, embedding: SeriesSegmentationEmbeddingRequestAction,
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
 		'''	Create a vector embedding for a segmentation
@@ -109,9 +111,10 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			session.refresh(_embedding_db)
 			return _embedding_db
 
+	
 	@app.get('/embeddings/{group}/seg/{uid}', summary='Retrieve details for image segmentation embedding',
-		response_model=SeriesSegmentationEmbeddingResponse, tags=['embeddings', 'segmentations'])
-	def get_seg_embedding(request: Request, group: int, uid: str, user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
+		response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
+	async def get_seg_embedding(request: Request, group: int, uid: str, user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
 		'''	Retrieve image segmentation embedding
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and the user is a member (403)
@@ -141,9 +144,38 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 
 			return _embedding_db
 
-	@app.delete('/embeddings/{group}/seg/{uid}', summary='Delete image segmentation embedding',
-		status_code=204, tags=['embeddings', 'segmentations'])
-	def delete_seg_embedding(request: Request, group: int, uid: str, user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
+	
+	@app.put('/embeddings/{group}/seg/{uid}', summary='Update image segmentation embedding',
+			response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
+	def update_seg_embedding(request: Request, group: int, uid: str, embedding: SeriesSegmentationEmbeddingRequestAction,
+			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
+		'''	Update image segmentation embedding
+		'''
+		# Check dataservice to ensure that the request group is associated with the app (404) and the user is a member (403)
+		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
+		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
+
+		with DatabaseSession() as session:
+
+			# Retrieve embedding from database
+			_embedding_db = session.query(SeriesSegmentationEmbedding) \
+				.filter(SeriesSegmentationEmbedding.group == group, SeriesSegmentationEmbedding.uid == uid).first()
+			if not _embedding_db:
+				raise HTTPException(status_code=client_api.STATUS_404, detail='embedding="%s" does not exist in %s' % (
+					uid, app.title
+				))
+
+			# Update fields on database instance
+			model_update_from_dict(_embedding_db, pick(
+				embedding, ('model_label', 'model_version', 'embedding', 'source', 'resource', 'quality', 'dice', 'hausdorff', 'notes')))
+			session.commit()
+			session.refresh(_embedding_db)
+
+			return _embedding_db
+
+	
+	@app.delete('/embeddings/{group}/seg/{uid}', summary='Delete image segmentation embedding', status_code=204, tags=['segmentations'])
+	async def delete_seg_embedding(request: Request, group: int, uid: str, user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
 		'''	Delete image segmentation embedding
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and user is a member (403)
@@ -161,9 +193,7 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 				))
 
 			session.delete(_embedding_db)
-			session.commit()
-
-			logger.info('Delete segmentation embedding: uid=%s series=%s' % (uid, _embedding_db.resource))
+			session.commit()			
 
 			return JSONResponse(content=jsonable_encoder({
 				'uid': uid,
@@ -171,11 +201,11 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 				client_api.STATUS: client_api.SUCCESS,
 			}))
 
+	
 	@app.post('/embeddings/{group}/seg/{model_label}/{model_version}/search',
 			summary='Perform similarity search for image segmentation embeddings', 
-			tags=['embeddings', 'segmentations', 'ai'],
-			response_model=List[SeriesSegmentationEmbeddingSimilarityResponse])
-	def seg_embedding_similarity_search(request: Request, group: int, model_label: str, model_version: str,
+			tags=['segmentations', 'ai'], response_model=List[SeriesSegmentationEmbeddingSimilarityResponse])
+	async def seg_embedding_similarity_search(request: Request, group: int, model_label: str, model_version: str,
 			query: SeriesSegmentationEmbeddingSimilarityQuery, 
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
