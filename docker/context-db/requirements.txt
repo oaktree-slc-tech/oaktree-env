@@ -3,3 +3,8 @@
 sonador_fastapi>=0.1.0
 uvicorn
 itsdangerous
+psycopg2-binary
+sqlalchemy>=2.0.0
+sqlalchemy-json
+pgvector
+alembic
