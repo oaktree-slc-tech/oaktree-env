@@ -33,6 +33,7 @@ def upgrade():
         sa.Column('embedding', Vector(None), nullable=False),
         sa.Column('source', sa.String(length=64), nullable=False),
         sa.Column('resource', sa.String(length=64), nullable=False),
+        sa.Column('quality', sa.BigInteger(), nullable=True),
         sa.Column('dice', sa.Float(), nullable=True),
         sa.Column('hausdorff', sa.Float(), nullable=True),
         sa.Column('notes', sa.Text(), nullable=True),
