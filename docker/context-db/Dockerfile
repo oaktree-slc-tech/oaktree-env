@@ -12,7 +12,8 @@ COPY --chown=1000:1000 requirements.txt /app/requirements/app.txt
 RUN pip3 install --break-system-packages --no-cache-dir -r /app/requirements/app.txt
 
 # Copy application code and runtime files
-COPY --chown=1000:1000 README.md main.py contextdb /app/
+COPY --chown=1000:1000 README.md main.py /app/
+COPY --chown=1000:1000 contextdb /app/contextdb
 
 # Application runtime settings
 USER 1000
