@@ -47,7 +47,7 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 
 Core data platform:
 * `core.yaml`. Core services of the environment providing object storage and streaming: MinIO, ZooKepper, and Kafka.
-* `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
+* `jupyterlab-gpu.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
 
 MedTech:
 * `sonador.yaml`. Sonador and the PostgreSQL database instance.
@@ -124,18 +124,7 @@ docker-compose -f compose/sonador.yaml restart
 
 
 ### GPU 
-The analytics container has GPU support included in the runtime, which can be used through the `compose/analytics-gpu.yaml` manifest. In order for the GPU accelerated to be recognized, the `nvidia-docker2` host must have the `nvidia-docker2` package installed and an `nvidia` runtime must be defined in `/etc/docker/daemon.json` similar to the example shown in the listing below:
-
-```json
-{
-  "runtimes": {
-  "nvidia": {
-      "path": "/usr/bin/nvidia-container-runtime",
-      "runtimeArgs": []
-    }
-  }
-}
-```
+The JupyterLab container has GPU support included in the runtime, which can be used through the `compose/jupyterlab-gpu.yaml` manifest.
 
 
 ### Sonador Web Application or Orthanc Development
