@@ -30,6 +30,7 @@ def upgrade():
         sa.Column('group', sa.BigInteger(), nullable=False),
         sa.Column('model_label', sa.String(length=128), nullable=False),
         sa.Column('model_version', sa.String(length=128), nullable=True),
+        sa.Column('segmentation_label', sa.String(length=512), nullable=False),
         sa.Column('embedding', Vector(None), nullable=False),
         sa.Column('source', sa.String(length=64), nullable=False),
         sa.Column('resource', sa.String(length=64), nullable=False),

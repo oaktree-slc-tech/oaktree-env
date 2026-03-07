@@ -5,6 +5,7 @@ from .base import EmbeddingResponse, EmbeddingRequestAction, EmbeddingSimilarity
 class SeriesSegmentationEmbeddingMixin:
 	'''	Mixin class providing attributes for Segmentation Embeddings
 	'''
+	segmentation_label: str = Field(..., description='Label for the segmentation')
 	source: str = Field(..., description='Orthanc UID for the imaging source of the segmentation')
 	resource: str = Field(..., 
 		description='Orthanc UID for the DICOMseg or M3D representation of the segmentation')
@@ -36,3 +37,4 @@ class SeriesSegmentationEmbeddingRequestAction(SeriesSegmentationEmbeddingMixin,
 class SeriesSegmentationEmbeddingSimilarityQuery(EmbeddingSimilarityQuery):
 	'''	Execute a similarity lookup for a segmentation embedding
 	'''
+	segmentation_label: str = Field(None, description='Segmentation label to be used for filtering results')

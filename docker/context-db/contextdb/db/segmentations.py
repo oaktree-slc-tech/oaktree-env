@@ -19,6 +19,7 @@ class SeriesSegmentationEmbedding(VectorEmbeddingBaseMixin, ContextDbMixin, DbBa
 	__tablename__ = 'sonador_contextdb__embedding_segmentation'
 
 	# Segmentation imaging source and series UID
+	segmentation_label = Column(SqlString(512), nullable=False)
 	source = Column(SqlString(64), nullable=False)
 	resource = Column(SqlString(64), nullable=False)
 

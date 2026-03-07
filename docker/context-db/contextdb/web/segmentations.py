@@ -39,6 +39,7 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 	@app.get('/embeddings/{group}/seg/{model_label}/{model_version}', response_model=List[SeriesSegmentationEmbeddingResponse], 
 		tags=['segmentations'], summary='Retrieve image segmentation embeddings')
 	async def list_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
+			segmentation_label: Optional[str] = Query('', description='Filter by segmentation label'),
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
@@ -57,6 +58,10 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			_query = session.query(SeriesSegmentationEmbedding).filter(
 				SeriesSegmentationEmbedding.model_label == model_label).filter(
 				SeriesSegmentationEmbedding.model_version == model_version)
+
+			# Query by model label
+			if segmentation_label:
+				_query.filter(SeriesSegmentationEmbedding.segmentation_label == segmentation_label)
 				
 			# Apply pagination
 			_query = apply_query_pagination(_query, page=page, items=items)
@@ -228,10 +233,14 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			
 			# Execute similarity search
 			try:
+
+				# Execute vector similarity search
 				_vectors = session.query(SeriesSegmentationEmbedding, _op.label('distance')).filter(
 			 		SeriesSegmentationEmbedding.group == group, SeriesSegmentationEmbedding.model_label == model_label,
 			 		SeriesSegmentationEmbedding.model_version == model_version).order_by(_op)
 				_vectors = apply_query_pagination(_vectors, page=page, items=items)
+
+				# Filter by model label
 			
 			# Return error details to user
 			except (DataError, PostgresDataException, Exception) as err:

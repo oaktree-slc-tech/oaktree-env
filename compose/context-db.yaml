@@ -1,11 +1,9 @@
-version: "3.8"
-
 services:
 
   # PostgreSQL with PgVector Extension
   contextdb-pgvector:
     image: pgvector/pgvector:pg16
-    container_name: agentic-db-postgres
+    container_name: sonador-contextdb-postgres
     environment:
       POSTGRES_USER: contextdb
       POSTGRES_PASSWORD: agentic-ai.sonador
@@ -20,7 +18,9 @@ services:
 
   # Context Augmentation Database
   context-db:
+    
     image: oaktreetech/agentic-ai.contextdb
+    container_image: sonador-contextdb
     build:
       context: ../docker/context-db/
       dockerfile: ../docker/context-db/Dockerfile
