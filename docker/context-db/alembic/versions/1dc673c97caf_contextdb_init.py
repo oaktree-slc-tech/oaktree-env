@@ -22,7 +22,7 @@ depends_on = None
 
 def upgrade():
 
-    # Create segmentation embedding model
+    # Create series segmentation embedding model
     op.create_table('sonador_contextdb__embedding_segmentation', 
         sa.Column('uid', sa.String(length=64), primary_key=True, unique=True),
         sa.Column('ctime', sa.DateTime()),
@@ -34,6 +34,26 @@ def upgrade():
         sa.Column('embedding', Vector(None), nullable=False),
         sa.Column('source', sa.String(length=64), nullable=False),
         sa.Column('resource', sa.String(length=64), nullable=False),
+        sa.Column('ground_truth', sa.String(length=64), nullable=False),
+        sa.Column('quality', sa.BigInteger(), nullable=True),
+        sa.Column('dice', sa.Float(), nullable=True),
+        sa.Column('hausdorff', sa.Float(), nullable=True),
+        sa.Column('notes', sa.Text(), nullable=True),
+    )
+
+    # Create segmentation embedding model
+    op.create_table('sonador_contextdb__instance_embedding_segmentation', 
+        sa.Column('uid', sa.String(length=64), primary_key=True, unique=True),
+        sa.Column('ctime', sa.DateTime()),
+        sa.Column('mtime', sa.DateTime()),
+        sa.Column('group', sa.BigInteger(), nullable=False),
+        sa.Column('model_label', sa.String(length=128), nullable=False),
+        sa.Column('model_version', sa.String(length=128), nullable=True),
+        sa.Column('segmentation_label', sa.String(length=512), nullable=False),
+        sa.Column('embedding', Vector(None), nullable=False),
+        sa.Column('source', sa.String(length=64), nullable=False),
+        sa.Column('resource', sa.String(length=64), nullable=False),
+        sa.Column('ground_truth', sa.String(length=64), nullable=False),
         sa.Column('quality', sa.BigInteger(), nullable=True),
         sa.Column('dice', sa.Float(), nullable=True),
         sa.Column('hausdorff', sa.Float(), nullable=True),
@@ -45,3 +65,4 @@ def downgrade():
 
     # Remove segmentation embedding model
     op.drop_table('sonador_contextdb__embedding_segmentation')
+    op.drop_table('sonador_contextdb__instance_embedding_segmentation')

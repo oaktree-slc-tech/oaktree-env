@@ -19,31 +19,68 @@ from sonador.apisettings import DCM_MODALITY_M3D, DCM_MODALITY_SEG
 from sonador_fastapi.auth import check_dataservice_group, check_dataservice_user_group
 from sonador_fastapi.db import apply_query_pagination, model_update_from_dict
 
-from ..db.segmentations import SeriesSegmentationEmbedding
-from ..schemas.segmentations import SeriesSegmentationEmbeddingResponse, SeriesSegmentationEmbeddingRequestAction, \
-	SeriesSegmentationEmbeddingSimilarityQuery, SeriesSegmentationEmbeddingSimilarityResponse
+from ..db.segmentations import InstanceSegmentationEmbedding, SeriesSegmentationEmbedding
+from ..schemas.segmentations import InstanceSegmentationEmbeddingResponse, InstanceSegmentationEmbeddingSimilarityResponse, \
+	SeriesSegmentationEmbeddingResponse, SeriesSegmentationEmbeddingSimilarityResponse, \
+	SegmentationEmbeddingRequestAction, SegmentationEmbeddingSimilarityQuery
 
 logger = logging.getLogger(__name__)
 
 
+def fetch_segmentation_embeddings(DatabaseSession, EmbeddingDbModel, model_label, model_version, 
+		segmentation_label=None, page=100, items=100):
+	'''	Retrieve segmentation embeddings for the provided embedding database model, model label, and model version.
+	'''
+	with DatabaseSession() as session:
 
-def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver, DatabaseSession):
-	'''	Initialize Segmentation embedding REST API endpoints.
+		# Query series segmentation embeddings
+		_query = session.query(EmbeddingDbModel).filter(
+			EmbeddingDbModel.model_label == model_label).filter(
+			EmbeddingDbModel.model_version == model_version)
+
+		# Query by model label
+		if segmentation_label:
+			_query.filter(EmbeddingDbModel.segmentation_label == segmentation_label)
+			
+		# Apply pagination
+		_query = apply_query_pagination(_query, page=page, items=items)
+		return _query.all()
+
+
+def create_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embedding):
+	'''	Create a segmentation embedding instance for the provided model.
+	'''
+	with DatabaseSession() as session:
+
+		# Add embedding to database
+		_embedding_db = EmbeddingDbModel(uid=str(uuid.uuid4()), group=group, 
+			**pick(embedding, ('model_label', 'model_version', 'embedding', 'source', 'resource', 'ground_truth',
+				'quality', 'dice', 'hausdorff', 'notes')))
+		session.add(_embedding_db)
+		session.commit()
+
+		session.refresh(_embedding_db)
+		return _embedding_db
+
+
+def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, iserver, DatabaseSession):
+	'''	Initialize Instance embedding REST API endpoints.
 
 		@input app: FastAPI app instance
 		@input iserver: Imaging server to be associated with the FastAPI app
 		@input sonador_dataservice_oidc: Sonador dataservice OIDC client
+		@input DatabaseSession: SQLAlchemy sessionmaker class
 	'''
 
-	
-	@app.get('/embeddings/{group}/seg/{model_label}/{model_version}', response_model=List[SeriesSegmentationEmbeddingResponse], 
-		tags=['segmentations'], summary='Retrieve image segmentation embeddings')
-	async def list_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
+
+	@app.get('/embeddings/{group}/seg/instance/{model_label}/{model_version}', response_model=List[InstanceSegmentationEmbeddingResponse], 
+		tags=['segmentations'], summary='Retrieve instance segmentation embeddings')
+	async def list_instance_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
 			segmentation_label: Optional[str] = Query('', description='Filter by segmentation label'),
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
-		'''	List segmentation vector embeddings, optionally filtered by model_label and model_version.
+		'''	List instance segmentation vector embeddings, optionally filtered by model_label and model_version.
 		'''
 		# Check dataservice to ensure that the requested group is associated. If not, return 404.
 		# Dataservice is retrieved from Sonador to ensure that the group listing is current.
@@ -52,27 +89,100 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 		# Ensure that the user is a member of the group. If not, return 403.
 		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
 
-		with DatabaseSession() as session:
+		# Retrieve instance (2D) segmentation embeddings
+		return fetch_segmentation_embeddings(DatabaseSession, InstanceSegmentationEmbedding, model_label, model_version,
+			segmentation_label=segmentation_label, page=page, items=items)
 
-			# Query series segmentation embeddings
-			_query = session.query(SeriesSegmentationEmbedding).filter(
-				SeriesSegmentationEmbedding.model_label == model_label).filter(
-				SeriesSegmentationEmbedding.model_version == model_version)
 
-			# Query by model label
-			if segmentation_label:
-				_query.filter(SeriesSegmentationEmbedding.segmentation_label == segmentation_label)
-				
-			# Apply pagination
-			_query = apply_query_pagination(_query, page=page, items=items)
-			return _query.all()
+	@app.post('/embeddings/{group}/instance/seg', status_code=201, summary='Create image instance (2D) segmentation embedding', 
+			response_model=InstanceSegmentationEmbeddingResponse, tags=['segmentations'])
+	async def create_instance_seg_embedding(request: Request, group: int, embedding: SegmentationEmbeddingRequestAction,
+			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
+		'''	Create a vector embedding for a instance (2D) segmentation
+		'''
+		# Check dataservice to ensure that the request group is associated with the app (404) and the user is a member (403)
+		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
+		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
+
+		# Check imaging source, segmentation instance, and ground truth to ensure they exist
+		# and that the user has access to them.
+		try: _dcm_source = iserver.get_instance(embedding.source)
+		except ClientOperationError as err:
+			
+			# Raise 404 error and notify user that source imaging does not exist
+			if getattr(err, 'http_code', None) and err.http_code == client_api.STATUS_404:
+				raise HTTPException(status_code=client_api.STATUS_404, 
+					detail='Source imaging series="%s" does not exist' % embedding.source)
+			
+			raise err
+
+		try: _sx_seg = iserver.get_series(embedding.resource)
+		except ClientOperationError as err:
+
+			# Raise 404 error and notify user that segmentation resource does not exist
+			if getattr(err, 'http_code', None) and err.http_code == client_api.STATUS_404:
+				raise HTTPException(status_code=client_api.STATUS_404,
+					detail='Segmentation series="%s" does not exist' % embedding.resource)
+
+		# Ensure that the segmentation resource is M3D or SEg
+		if not _sx_seg.modality in (DCM_MODALITY_SEG, DCM_MODALITY_M3D):
+			raise HTTPException(status_code=client_api.STATUS_400, 
+				detail='Invalid segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
+
+		try: _sx_gold = iserver.get_series(embedding.ground_truth)
+		except ClientOperationError as err:
+
+			# Raise 404 error and notify user that ground truth resource does not exist
+			if getattr(err, 'http_code', None) and err.http_code == client_api.STATUS_404:
+				raise HTTPException(status_code=client_api.STATUS_404,
+					detail='Ground truth segmentation series series="%s" does not exist' % embedding.ground_truth)
+
+		# Ensure that the segmentation ground truth is M3D or SEG
+		if not _sx_gold.modality in (DCM_MODALITY_SEG, DCM_MODALITY_M3D):
+			raise HTTPException(status_code=client_api.STATUS_400, 
+				detail='Invalid ground-truth segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
+
+		# Create new instance embedding
+		return create_segmentation_embedding(DatabaseSession, InstanceSegmentationEmbedding, group, embedding)
+
+
+
+def init_series_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, iserver, DatabaseSession):
+	'''	Initialize Segmentation embedding REST API endpoints.
+
+		@input app: FastAPI app instance
+		@input iserver: Imaging server to be associated with the FastAPI app
+		@input sonador_dataservice_oidc: Sonador dataservice OIDC client
+		@input DatabaseSession: SQLAlchemy sessionmaker class
+	'''
 
 	
-	@app.post('/embeddings/{group}/seg', status_code=201, summary='Create image segmentation embedding', 
-			response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
-	async def create_seg_embedding(request: Request, group: int, embedding: SeriesSegmentationEmbeddingRequestAction,
+	@app.get('/embeddings/{group}/seg/series/{model_label}/{model_version}', response_model=List[SeriesSegmentationEmbeddingResponse], 
+		tags=['segmentations'], summary='Retrieve image series (3D) segmentation embeddings')
+	async def list_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
+			segmentation_label: Optional[str] = Query('', description='Filter by segmentation label'),
+			page: Optional[int] = Query(1, ge=1, description="Page number"),
+			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
-		'''	Create a vector embedding for a segmentation
+		'''	List series segmentation vector embeddings, optionally filtered by model_label and model_version.
+		'''
+		# Check dataservice to ensure that the requested group is associated. If not, return 404.
+		# Dataservice is retrieved from Sonador to ensure that the group listing is current.
+		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
+
+		# Ensure that the user is a member of the group. If not, return 403.
+		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
+
+		# Retrieve instance (3D) segmentation embeddings
+		return fetch_segmentation_embeddings(DatabaseSession, SeriesSegmentationEmbedding, model_label, model_version,
+			segmentation_label=segmentation_label, page=page, items=items)
+
+	
+	@app.post('/embeddings/{group}/series/seg', status_code=201, summary='Create image series (3D) segmentation embedding', 
+			response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
+	async def create_seg_embedding(request: Request, group: int, embedding: SegmentationEmbeddingRequestAction,
+			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
+		'''	Create a vector embedding for a series segmentation
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and the user is a member (403)
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
@@ -103,24 +213,27 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			raise HTTPException(status_code=client_api.STATUS_400, 
 				detail='Invalid segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
 
-		# Create new VectorItem
-		with DatabaseSession() as session:
+		try: _sx_gold = iserver.get_series(embedding.ground_truth)
+		except ClientOperationError as err:
 
-			# Add embedding to database
-			_embedding_db = SeriesSegmentationEmbedding(uid=str(uuid.uuid4()), group=group, 
-				**pick(embedding, ('model_label', 'model_version', 'embedding', 'source', 'resource', 
-					'quality', 'dice', 'hausdorff', 'notes')))
-			session.add(_embedding_db)
-			session.commit()
+			# Raise 404 error and notify user that ground truth resource does not exist
+			if getattr(err, 'http_code', None) and err.http_code == client_api.STATUS_404:
+				raise HTTPException(status_code=client_api.STATUS_404,
+					detail='Ground truth segmentation series series="%s" does not exist' % embedding.ground_truth)
 
-			session.refresh(_embedding_db)
-			return _embedding_db
+		# Ensure that the segmentation resource is M3D or SEg
+		if not _sx_gold.modality in (DCM_MODALITY_SEG, DCM_MODALITY_M3D):
+			raise HTTPException(status_code=client_api.STATUS_400, 
+				detail='Invalid ground-truth segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
+
+		# Create new series embedding
+		return create_segmentation_embedding(DatabaseSession, SeriesSegmentationEmbedding, group, embedding)
 
 	
-	@app.get('/embeddings/{group}/seg/{uid}', summary='Retrieve details for image segmentation embedding',
+	@app.get('/embeddings/{group}/seg/series/{uid}', summary='Retrieve details for image series (3D) segmentation embedding',
 		response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
 	async def get_seg_embedding(request: Request, group: int, uid: str, user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
-		'''	Retrieve image segmentation embedding
+		'''	Retrieve details for a series segmentation embedding
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and the user is a member (403)
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
@@ -150,11 +263,11 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			return _embedding_db
 
 	
-	@app.put('/embeddings/{group}/seg/{uid}', summary='Update image segmentation embedding',
+	@app.put('/embeddings/{group}/seg/series/{uid}', summary='Update image series (3D) segmentation embedding',
 			response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations'])
-	def update_seg_embedding(request: Request, group: int, uid: str, embedding: SeriesSegmentationEmbeddingRequestAction,
+	def update_seg_embedding(request: Request, group: int, uid: str, embedding: SegmentationEmbeddingRequestAction,
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
-		'''	Update image segmentation embedding
+		'''	Update series segmentation embedding
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and the user is a member (403)
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
@@ -179,9 +292,9 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			return _embedding_db
 
 	
-	@app.delete('/embeddings/{group}/seg/{uid}', summary='Delete image segmentation embedding', status_code=204, tags=['segmentations'])
+	@app.delete('/embeddings/{group}/seg/series/{uid}', summary='Delete image series (3D) segmentation embedding', status_code=204, tags=['segmentations'])
 	async def delete_seg_embedding(request: Request, group: int, uid: str, user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
-		'''	Delete image segmentation embedding
+		'''	Delete series segmentation embedding
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and user is a member (403)
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
@@ -207,15 +320,15 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 			}))
 
 	
-	@app.post('/embeddings/{group}/seg/{model_label}/{model_version}/search',
-			summary='Perform similarity search for image segmentation embeddings', 
+	@app.post('/embeddings/{group}/seg/series/{model_label}/{model_version}/search',
+			summary='Perform similarity search for image series (3D) segmentation embeddings', 
 			tags=['segmentations', 'ai'], response_model=List[SeriesSegmentationEmbeddingSimilarityResponse])
 	async def seg_embedding_similarity_search(request: Request, group: int, model_label: str, model_version: str,
 			query: SeriesSegmentationEmbeddingSimilarityQuery, 
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
-		'''	Find the most similar vectors to the provided query. Returns the most similar vectors with L2 distance.
+		'''	Find the most similar series embeddings to the provided query. Returns the most similar vectors via L2 distance.
 		'''
 		# Check dataservice to ensure that the request group is associated with the app (404) and user is a membe (403)
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
@@ -255,4 +368,3 @@ def init_segmentation_embedding_endpints(app, sonador_dataservice_oidc, iserver,
 					('uid', 'ctime', 'mtime', 'model_label', 'model_version', 'embedding', 'source', 'resource', 
 						'quality', 'dice', 'hausdorff', 'notes')))
 				for _r in _vectors.all()]
-
