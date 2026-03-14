@@ -24,7 +24,7 @@ class InstanceSegmentationEmbedding(VectorEmbeddingBaseMixin, ContextDbMixin, Db
 	segmentation_label = Column(SqlString(512), nullable=False)
 	source = Column(SqlString(64), nullable=False)
 	resource = Column(SqlString(64), nullable=False)
-	ground_truth = Colume(SqlString(64), nullable=False)
+	ground_truth = Column(SqlString(64), nullable=False)
 
 	# Segmentation Metrics
 	quality = Column(SqlInteger, nullable=True)
@@ -50,7 +50,7 @@ class SeriesSegmentationEmbedding(VectorEmbeddingBaseMixin, ContextDbMixin, DbBa
 	segmentation_label = Column(SqlString(512), nullable=False)
 	source = Column(SqlString(64), nullable=False)
 	resource = Column(SqlString(64), nullable=False)
-	ground_truth = Colume(SqlString(64), nullable=False)
+	ground_truth = Column(SqlString(64), nullable=False)
 
 	# Segmentation Metrics
 	quality = Column(SqlInteger, nullable=True)

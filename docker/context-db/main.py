@@ -109,4 +109,5 @@ async def contextdb_docs(request: Request, user=Depends(sonador_oidc_client.ui_a
 # Initialize ContextDB endpoints
 from contextdb.web import segmentations as contextdb_web_seg
 
+contextdb_web_seg.init_instance_segmentation_embedding_endpoints(app, sonador_oidc_client, ISERVER, FastApiDatabaseSession)
 contextdb_web_seg.init_series_segmentation_embedding_endpoints(app, sonador_oidc_client, ISERVER, FastApiDatabaseSession)
