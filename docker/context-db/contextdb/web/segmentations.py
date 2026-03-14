@@ -51,7 +51,7 @@ def fetch_segmentation_embeddings(DatabaseSession, EmbeddingDbModel, group, mode
 		return _query.all()
 
 
-def get_segmentation_embedding(iserver, DatabaseSession, EmbeddingDbModel, group, embedding_uid):
+def get_segmentation_embedding(app, iserver, DatabaseSession, EmbeddingDbModel, group, embedding_uid):
 	'''	Retrieve segmentation embedding for the provided database model, group, and UID.
 
 		@input DatabaseSession: sessionmaker class
@@ -85,7 +85,7 @@ def get_segmentation_embedding(iserver, DatabaseSession, EmbeddingDbModel, group
 		return _embedding_db
 
 
-def create_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embedding):
+def create_segmentation_embedding(app, DatabaseSession, EmbeddingDbModel, group, embedding):
 	'''	Create a segmentation embedding instance for the provided model.
 	'''
 	with DatabaseSession() as session:
@@ -101,7 +101,7 @@ def create_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embe
 		return _embedding_db
 
 
-def update_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embedding_uid, embedding):
+def update_segmentation_embedding(app, DatabaseSession, EmbeddingDbModel, group, embedding_uid, embedding):
 	'''	Update a segmentation embedding instance for the provided model
 	'''
 	with DatabaseSession() as session:
@@ -123,7 +123,7 @@ def update_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embe
 		return _embedding_db
 
 
-def delete_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embedding_uid):
+def delete_segmentation_embedding(app, DatabaseSession, EmbeddingDbModel, group, embedding_uid):
 	'''	Remove a segmentation embedding instance for the provided model
 	'''
 	with DatabaseSession() as session:
@@ -140,7 +140,7 @@ def delete_segmentation_embedding(DatabaseSession, EmbeddingDbModel, group, embe
 		session.commit()			
 
 		return JSONResponse(content=jsonable_encoder({
-			'uid': uid,
+			'uid': embedding_uid,
 			client_api.OPRESULT: 'delete-embedding',
 			client_api.STATUS: client_api.SUCCESS,
 		}))
@@ -273,7 +273,7 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 				detail='Invalid ground-truth segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
 
 		# Create new instance embedding
-		return create_segmentation_embedding(DatabaseSession, InstanceSegmentationEmbedding, group, embedding)
+		return create_segmentation_embedding(app, DatabaseSession, InstanceSegmentationEmbedding, group, embedding)
 
 	
 	@app.get('/embeddings/{group}/seg/instance/{uid}', summary='Retrieve details for image instance (2D) segmentation embedding',
@@ -288,7 +288,7 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 		# Create image server instance for user request
 
 
-		return get_segmentation_embedding(iserver, DatabaseSession, InstanceSegmentationEmbedding, group, uid)
+		return get_segmentation_embedding(app, iserver, DatabaseSession, InstanceSegmentationEmbedding, group, uid)
 
 	
 	@app.put('/embeddings/{group}/seg/instance/{uid}', summary='Update image instance (2D) segmentation embedding',
@@ -301,7 +301,7 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
 		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
 
-		return update_segmentation_embedding(DatabaseSession, InstanceSegmentationEmbedding, group, uid, embedding)
+		return update_segmentation_embedding(app, DatabaseSession, InstanceSegmentationEmbedding, group, uid, embedding)
 
 
 	@app.delete('/embeddings/{group}/seg/instance/{uid}', summary='Delete image instance (2D) segmentation embedding', 
@@ -313,7 +313,7 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
 		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
 
-		return delete_segmentation_embedding(DatabaseSession, InstanceSegmentationEmbedding, group, uid)
+		return delete_segmentation_embedding(app, DatabaseSession, InstanceSegmentationEmbedding, group, uid)
 
 	@app.post('/embeddings/{group}/seg/instance/{model_label}/{model_version}/search',
 			summary='Perform similarity search for image instance (2D) segmentation embeddings', 
@@ -418,7 +418,7 @@ def init_series_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, 
 				detail='Invalid ground-truth segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
 
 		# Create new series embedding
-		return create_segmentation_embedding(DatabaseSession, SeriesSegmentationEmbedding, group, embedding)
+		return create_segmentation_embedding(app, DatabaseSession, SeriesSegmentationEmbedding, group, embedding)
 
 	
 	@app.get('/embeddings/{group}/seg/series/{uid}', summary='Retrieve details for image series (3D) segmentation embedding',
@@ -430,7 +430,7 @@ def init_series_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, 
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
 		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
 
-		return get_segmentation_embedding(iserver, DatabaseSession, SeriesSegmentationEmbedding, group, uid)
+		return get_segmentation_embedding(app, iserver, DatabaseSession, SeriesSegmentationEmbedding, group, uid)
 
 	
 	@app.put('/embeddings/{group}/seg/series/{uid}', summary='Update image series (3D) segmentation embedding',
@@ -455,7 +455,7 @@ def init_series_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, 
 		check_dataservice_group(sonador_dataservice_oidc.dataservice, group, app_label=app.title)
 		check_dataservice_user_group(sonador_dataservice_oidc.dataservice, group, user, app_label=app.title)
 
-		return delete_segmentation_embedding(DatabaseSession, SeriesSegmentationEmbedding, group, uid)
+		return delete_segmentation_embedding(app, DatabaseSession, SeriesSegmentationEmbedding, group, uid)
 
 	
 	@app.post('/embeddings/{group}/seg/series/{model_label}/{model_version}/search',
