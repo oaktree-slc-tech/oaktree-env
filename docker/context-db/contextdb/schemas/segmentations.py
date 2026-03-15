@@ -13,9 +13,9 @@ class SegmentationBaseEmbeddingMixin:
 	ground_truth: str = Field(...,
 		description='Orthanc UID for the DICOMseg or M3D representation of the ground truth')
 	
-	quality: int = Field(default=None, description='Quality score for the segmentation')
-	dice: float = Field(default=None, description='DICE score of the segmentation (against known ground-truth)')
-	hausdorff: float = Field(default=None, 
+	quality: int = Field(..., description='Quality score for the segmentation')
+	dice: float = Field(..., description='DICE score of the segmentation (against known ground-truth)')
+	hausdorff: float = Field(..., 
 		description='Hausdorff distance for the segmentation (deviation of surface against known ground truth)')
 	
 	notes: str = Field(default=None, description='Free-text notes and comments')
