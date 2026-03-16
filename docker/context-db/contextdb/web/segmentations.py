@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 def fetch_segmentation_embeddings(DatabaseSession, EmbeddingDbModel, group, model_label, model_version, 
-		segmentation_label=None, page=100, items=100):
+		segmentation_label=None, source=None, ground_truth=None, resource=None, page=100, items=100, **kwargs):
 	'''	Retrieve segmentation embeddings for the provided embedding database model, model label, and model version.
 	'''
 	with DatabaseSession() as session:
@@ -42,9 +42,15 @@ def fetch_segmentation_embeddings(DatabaseSession, EmbeddingDbModel, group, mode
 			.filter(EmbeddingDbModel.model_label == model_label) \
 			.filter(EmbeddingDbModel.model_version == model_version)
 
-		# Query by segmentation label
+		# Query by segmentation label, source, ground truth, and seg resource
 		if segmentation_label:
 			_query = _query.filter(EmbeddingDbModel.segmentation_label == segmentation_label)
+		if source:
+			_query = _query.filter(EmbeddingDbModel.source == source)
+		if ground_truth:
+			_query = _query.filter(EmbeddingDbModel.ground_truth == ground_truth)
+		if resource:
+			_query = _query.filter(EmbeddingDbModel.resource == resource)
 			
 		# Apply pagination
 		_query = apply_query_pagination(_query, page=page, items=items)
@@ -207,6 +213,9 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 		tags=['segmentations', 'instance'], summary='Retrieve instance segmentation embeddings')
 	async def list_instance_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
 			segmentation_label: Optional[str] = Query('', description='Filter by segmentation label'),
+			source: Optional[str] = Query('', description='Filter by segmentation image source UID'),
+			ground_truth: Optional[str] = Query('', description='Filter by segmentation ground truth'),
+			resource: Optional[str] = Query('', description='Filter by segmentation resource UID'),
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
@@ -221,10 +230,11 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 
 		# Retrieve instance (2D) segmentation embeddings
 		return fetch_segmentation_embeddings(DatabaseSession, InstanceSegmentationEmbedding, group, model_label, model_version,
-			segmentation_label=segmentation_label, page=page, items=items)
+			segmentation_label=segmentation_label, source=source, ground_truth=ground_truth, resource=resource,
+			page=page, items=items)
 
 
-	@app.post('/embeddings/{group}/instance/seg', status_code=201, summary='Create image instance (2D) segmentation embedding', 
+	@app.post('/embeddings/{group}/seg/instance', status_code=201, summary='Create image instance (2D) segmentation embedding', 
 			response_model=InstanceSegmentationEmbeddingResponse, tags=['segmentations', 'instance'])
 	async def create_instance_seg_embedding(request: Request, group: int, embedding: SegmentationEmbeddingRequestAction,
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
@@ -352,6 +362,9 @@ def init_series_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, 
 		tags=['segmentations', 'series'], summary='Retrieve image series (3D) segmentation embeddings')
 	async def list_seg_embeddings(request: Request, group: int, model_label: str, model_version: str,
 			segmentation_label: Optional[str] = Query('', description='Filter by segmentation label'),
+			source: Optional[str] = Query('', description='Filter by segmentation image source UID'),
+			ground_truth: Optional[str] = Query('', description='Filter by segmentation ground truth'),
+			resource: Optional[str] = Query('', description='Filter by segmentation resource UID'),
 			page: Optional[int] = Query(1, ge=1, description="Page number"),
 			items: Optional[int] = Query(100, ge=1, le=1000, description='Number of items per page'),
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
@@ -366,10 +379,11 @@ def init_series_segmentation_embedding_endpoints(app, sonador_dataservice_oidc, 
 
 		# Retrieve instance (3D) segmentation embeddings
 		return fetch_segmentation_embeddings(DatabaseSession, SeriesSegmentationEmbedding, model_label, model_version,
-			segmentation_label=segmentation_label, page=page, items=items)
+			segmentation_label=segmentation_label, source=source, resource=resource, ground_truth=ground_truth,
+			page=page, items=items)
 
 	
-	@app.post('/embeddings/{group}/series/seg', status_code=201, summary='Create image series (3D) segmentation embedding', 
+	@app.post('/embeddings/{group}/seg/series', status_code=201, summary='Create image series (3D) segmentation embedding', 
 			response_model=SeriesSegmentationEmbeddingResponse, tags=['segmentations', 'series'])
 	async def create_seg_embedding(request: Request, group: int, embedding: SegmentationEmbeddingRequestAction,
 			user=Depends(sonador_dataservice_oidc.api_authtoken_check)):
