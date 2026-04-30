@@ -1,3 +1,5 @@
+from typing import List, Optional, Any
+
 from pydantic import BaseModel, Field, field_validator
 from .base import EmbeddingResponse, EmbeddingRequestAction, EmbeddingSimilarityQuery
 
@@ -19,6 +21,7 @@ class SegmentationBaseEmbeddingMixin:
 		description='Hausdorff distance for the segmentation (deviation of surface against known ground truth)')
 	
 	notes: str = Field(default=None, description='Free-text notes and comments')
+	misc: dict[str, Any] = Field(default_factory=dict, description='Segmentation JSON attributes')
 
 
 

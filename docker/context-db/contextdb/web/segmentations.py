@@ -99,7 +99,7 @@ def create_segmentation_embedding(app, DatabaseSession, EmbeddingDbModel, group,
 		# Add embedding to database
 		_embedding_db = EmbeddingDbModel(uid=str(uuid.uuid4()), group=group, 
 			**pick(embedding, ('model_label', 'model_version', 'embedding', 'source', 'resource', 'ground_truth',
-				'segmentation_label', 'quality', 'dice', 'hausdorff', 'notes')))
+				'segmentation_label', 'quality', 'dice', 'hausdorff', 'notes', 'misc')))
 		session.add(_embedding_db)
 		session.commit()
 
@@ -122,7 +122,8 @@ def update_segmentation_embedding(app, DatabaseSession, EmbeddingDbModel, group,
 
 		# Update fields on database instance
 		model_update_from_dict(_embedding_db, pick(
-			embedding, ('model_label', 'model_version', 'embedding', 'source', 'resource', 'quality', 'dice', 'hausdorff', 'notes')))
+			embedding, ('model_label', 'model_version', 'embedding', 'source', 'resource', 'quality', 'dice', 'hausdorff', 
+				'notes', 'misc')))
 		session.commit()
 		session.refresh(_embedding_db)
 
@@ -192,7 +193,7 @@ def segmentation_similarity_search(DatabaseSession, EmbeddingModel, group, model
 		# Unpack results for serialization
 		return [SimilarityResponseClass(distance=_r[1], **pick(_r[0], 
 				('uid', 'ctime', 'mtime', 'model_label', 'model_version', 'embedding', 'source', 'resource', 'ground_truth',
-					'segmentation_label', 'quality', 'dice', 'hausdorff', 'notes')))
+					'segmentation_label', 'quality', 'dice', 'hausdorff', 'notes', 'misc')))
 			for _r in _vectors.all()]
 
 

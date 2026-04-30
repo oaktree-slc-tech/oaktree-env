@@ -1,7 +1,7 @@
 '''	ContextDB schemas for validating vector embeddings
 '''
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 
 

@@ -7,6 +7,8 @@ from sqlalchemy import Column, ForeignKey, Integer as SqlInteger, String as SqlS
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from pgvector.sqlalchemy import Vector
 
+from sqlalchemy_json import mutable_json_type
+
 from sonador.imaging.orthanc.base import ImagingSeries, ImagingStudy, ImagingPatient, DcmInstance
 
 from .base import DbBase, AutoDbBase
@@ -31,3 +33,4 @@ class VectorEmbeddingBaseMixin:
 
 	# Embedding
 	embedding = Column(Vector(None), nullable=False)
+	misc = Column(mutable_json_type(dbtype=JSONB, nested=True))

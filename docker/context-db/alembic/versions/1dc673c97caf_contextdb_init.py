@@ -39,6 +39,7 @@ def upgrade():
         sa.Column('dice', sa.Float(), nullable=True),
         sa.Column('hausdorff', sa.Float(), nullable=True),
         sa.Column('notes', sa.Text(), nullable=True),
+        sa.Column('misc', mutable_json_type(dbtype=JSONB, nested=True)),
     )
 
     # Create segmentation embedding model
@@ -58,6 +59,7 @@ def upgrade():
         sa.Column('dice', sa.Float(), nullable=True),
         sa.Column('hausdorff', sa.Float(), nullable=True),
         sa.Column('notes', sa.Text(), nullable=True),
+        sa.Column('misc', mutable_json_type(dbtype=JSONB, nested=True)),
     )
 
 
