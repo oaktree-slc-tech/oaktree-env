@@ -1,0 +1,11 @@
+--extra-index-url https://code.oak-tree.tech/api/v4/projects/335/packages/pypi/simple
+
+sonador>=0.4.1
+pydicom>=2.4.4,<3.0
+dicom2nifti==2.5.1
+sonadoretl>=0.2.0
+s3fs
+boto
+psycopg2-binary==2.9.10
+totalsegmentator==2.12.0
+fury

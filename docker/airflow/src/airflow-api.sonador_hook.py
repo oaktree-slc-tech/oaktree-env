@@ -1,7 +1,8 @@
-import logging, json
+import logging, json, os, traceback
 from collections import namedtuple
 
-from airflow.hooks.base import BaseHook
+from airflow.models import Variable
+from airflow.sdk.bases.hook import BaseHook
 
 from client.utils.conversion import str2bool
 from client.utils.urls import build_url, validate_url
@@ -12,6 +13,16 @@ from sonador.apisettings import SONADOR_URL, SONADOR_IMAGING_SERVER, \
 from sonador.servers import SonadorServer
 
 logger = logging.getLogger(__name__)
+
+
+def _is_dag_parsing_context():
+	'''Check if we're in DAG parsing context (not task execution)'''
+	# In Airflow 3.0, during DAG parsing there's no task instance context
+	try:
+		from airflow.sdk.execution_time.supervisor import IS_SUPERVISOR_PROCESS
+		return not IS_SUPERVISOR_PROCESS
+	except ImportError:
+		return False
 
 
 SonadorAirflowConnectionParams = namedtuple('SonadorAirflowConnectionParams', (
@@ -34,20 +45,13 @@ class SonadorHook(BaseHook):
 		self.conn_id = conn_id
 
 	def get_connection(self, sonador_conn_param=None, **kwargs):
-		'''	Retrieve the requested connection
+		'''	Retrieve the requested connection using Airflow 3.0 compatible method
 		'''
-		from airflow.models.connection import Connection
-		from airflow.settings import Session
-
 		sonador_conn_param = sonador_conn_param or self.sonador_conn_param
-
 		conn_id = kwargs.get(sonador_conn_param, self.conn_id)
-		conn = None
 
-		# Retrieve connection from the database
-		session = Session()
-		try: conn = session.query(Connection).filter(Connection.conn_id == conn_id).first()
-		finally: session.close()
+		# Use BaseHook.get_connection which works in both Airflow 2.x and 3.x
+		conn = BaseHook.get_connection(conn_id)
 
 		if not conn:
 			raise ValueError('Unable to retrieve connection %s from database' % conn_id)
@@ -78,7 +82,7 @@ class SonadorHook(BaseHook):
 
 		# Retrieve imaging server UID and DNS
 		iserver_uid = conn_extra.get(SONADOR_IMAGING_SERVER)
-		internal_dns = str2bool(conn_extra.get(SONADOR_INTERNAL_DNS, False))
+		internal_dns = str2bool(conn_extra.get(SONADOR_INTERNAL_DNS, True))
 		verify_ssl = str2bool(conn_extra.get(SONADOR_VERIFY_SSL, False))
 
 		return SonadorAirflowConnectionParams(
@@ -121,17 +125,17 @@ class SonadorHook(BaseHook):
 
 	@classmethod
 	def available_connections(cls, sonador_conn_type=CONN_TYPE_GENERIC, **kwargs):
-		'''	Retrieve a list of available Sonador connections
+		'''	Retrieve a list of available Sonador connections.
+
+		In Airflow 3.0, direct database access during DAG parsing is not allowed.
+		Falls back to environment variable SONADOR_CONNECTIONS (comma-separated list)
+		or returns a default connection list.
 		'''
-		from airflow.models.connection import Connection
-		from airflow.settings import Session
+		# First try environment variable (works in all contexts)
+		env_connections = Variable.get('SONADOR_CONNECTIONS', default_var='')
+		if env_connections:
+			return [c.strip() for c in env_connections.split(',') if c.strip()]
 
-		session = Session()
-
-		try:
-			# Query Airflow database for Sonador connections
-			connections = session.query(Connection).filter(Connection.conn_type==sonador_conn_type)
-			return [conn.conn_id for conn in connections]
-
-		finally:
-			session.close()
+		# Retrieve default connection
+		default_conn = Variable.get('SONADOR_DEFAULT_CONN', default_var='sonador')
+		return [default_conn]

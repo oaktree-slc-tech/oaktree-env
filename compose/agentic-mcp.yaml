@@ -1,0 +1,17 @@
+services:
+  
+  mcp-segmentationsw:
+    
+    image: oaktreetech/sonador-mcp.segmentations
+    container_name: sonador-rag-mcp-segmentations
+    ports:
+    - 6767:6767
+    environment:
+      SONADOR_URL: "http://imaging:8070"
+      SONADOR_APITOKEN: "secure-api@sonador-dev"
+      SONADOR_IMAGING_SERVER: "dev01"
+      SONADOR_CONTEXTDB_URL: "http://context-db:8072"
+      EMBEDDING_URL: "http://ollama-api:11434/v1/embeddings"
+      EMBEDDING_MODEL: 'mxbai-embed-large'
+
+    

@@ -3,3 +3,8 @@ numpy-stl
 gmsh
 pymeshfix
 pyacvd
+
+# LLM and Generative AI Libraries
+pydantic-ai-slim[openai]
+fastmcp>=2.0.0
+httpx
