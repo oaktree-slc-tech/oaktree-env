@@ -1,16 +1,17 @@
-# ETL Example 2: Index Medical Images
-# This example shows the use of the AirFlow Python operator in order
-# to retrieve, index, verify, and remove a medical imaging scan.
+'''
+# Sonador ETL Example 2: Index Medical Imags
+This examples hows the use of the AirFlow Python operator in order to 
+retrieve, index, verify, and remove a medical imaging scan.
+'''
 import logging, requests, re, fnmatch, zipfile
 from datetime import datetime, timedelta
 from io import BytesIO
 
 from airflow import DAG
-from airflow.operators.bash_operator import BashOperator
-from airflow.operators.python_operator import PythonOperator
-from airflow.utils.dates import days_ago
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
-from airflow.models.param import Param
+from airflow.sdk import Param
 
 from client.utils.conversion import str2bool
 from client.utils.object import pick
@@ -106,8 +107,8 @@ def sonador_remove_series(**context):
 # Default arguments
 default_arguments = {
 	'owner': 'sonador',
-	'dependes_on_past': False,
-	'start_date': days_ago(1),
+	'depends_on_past': False,
+	'start_date': datetime(2020,1,1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
@@ -121,17 +122,15 @@ available_sonador_connections = SonadorHook.available_connections()
 dag = DAG('SonadorExample02-Index', default_args=default_arguments, params={
 		'conn_id': Param(type='string', enum=available_sonador_connections, 
 			default=available_sonador_connections[0] if available_sonador_connections else None),
-	})
+	}, tags=['sonador-io', 'sonador-example'], doc_md=__doc__)
 
 
 # Define task steps
 l0 = PythonOperator(task_id='example02-verify-env', python_callable=verify_etl_env, dag=dag)
-t1 = PythonOperator(task_id='example02-index-imagearchive', python_callable=sonador_index_imagearchive, dag=dag,
-	depends_on_past=True, retries=2)
-t2 = PythonOperator(task_id='example02-validate-indexop', python_callable=sonador_validate_indexop, dag=dag,
-	depends_on_past=True, provide_context=True)
-t3 = PythonOperator(task_id='example02-remove-series', python_callable=sonador_remove_series, dag=dag,
-	depends_on_past=True, provide_context=True)
+t1 = PythonOperator(task_id='example02-index-imagearchive', python_callable=sonador_index_imagearchive, 
+	dag=dag, retries=2)
+t2 = PythonOperator(task_id='example02-validate-indexop', python_callable=sonador_validate_indexop, dag=dag)
+t3 = PythonOperator(task_id='example02-remove-series', python_callable=sonador_remove_series, dag=dag)
 
 
 # Order tasks

@@ -1,26 +1,27 @@
-# ETL Example 1: AirFlow "Hello World".
-# This example shows a set of tasks that echo "Hello World" using BASH.
-# It demonstrates the use of the BASH operator.
+'''
+# ETL Example 1: Airflow "Hello World"
+This example shows a set of tasks that echo "Hello World" using BASH.
+It demonstrates the use of the BASH operator.
+'''
 
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.operators.bash_operator import BashOperator
-from airflow.utils.dates import days_ago
+from airflow.operators.bash import BashOperator
 
 
 # Default arguments
 default_args = {
 	'owner': 'sonador',
 	'depends_on_past': False,
-	'start_date': days_ago(1),
+	'start_date': datetime(2020,1,1),
 	'retries': 1,
 	'retry_delay': timedelta(minutes=1),
 }
 
 
 # Initialize HelloWorld DAG
-dag = DAG('HelloWorld', default_args=default_args)
+dag = DAG('SonadorExample01-HelloWorld', default_args=default_args, tags=['sonador-example'], doc_md=__doc__)
 
 
 # Define task stages

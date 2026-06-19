@@ -47,23 +47,23 @@ Multiple `docker-compose` scripts are included so that it is possible to deploy 
 
 Core data platform:
 * `core.yaml`. Core services of the environment providing object storage and streaming: MinIO, ZooKepper, and Kafka.
-* `analytics.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
+* `jupyterlab-gpu.yaml`. Jupyter with Sonador/Orthanc client libraries installed.
 
 MedTech:
 * `sonador.yaml`. Sonador and the PostgreSQL database instance.
   - Requires: `core.yaml`
 * `pacs-secure.yaml`. Orthanc with Sonador security/authorization layer enabled. Includes NGINX proxy for Orthanc which injects CORS headers. _This is required if you will be using the OHIF viewer instance provided by Sonador._
-  - Requires: `core.yaml`
+  - Requires: `core.yaml` and `sonador.yaml`
 
 Data infrastructure (ETL):
 * `message-broker.yaml`. RabbitMQ message broker (with management plugin).
 * `airflow-etl.yaml`. Airflow with Sonador/Orthanc client libraries installed. 
-  - Requires: `core.yaml`, `message-broker.yaml`, `pacs-secure.yaml`
-  - `airflow-etl.gitlab-sso.yaml`: specialized Airflow configuration with dependencies needed to support GitLab as an SSO Identity Provider. _Refer to notes below for configuration instructions and to ["Using GitLab as an Identity Provider for Apache Airflow 2"](https://www.oak-tree.tech/blog/k8s-airflow-oauth2-gitlab) for implementation details._
-  - _Username/password for environment is `airflow:airflow`._
+  - Requires: `core.yaml`, `message-broker.yaml`, `sonador.yaml`, `pacs-secure.yaml`
+  - **IMPORTANT**: SSO for Airflow is provided by Sonador and requires additional configuration. Refer to `README.md` in `docker/airflow` for additional information.
 * `airflow-ai.yaml`. Airflow with Sonador/Orthanc client libraries and [Total Segmentator](https://github.com/wasserth/TotalSegmentator) (an open source solution which supports full body segmentation) installed.
-  - Requires: `core.yaml`, `message-broker.yaml`, `pacs-secure.yaml`
+  - Requires: `core.yaml`, `message-broker.yaml`, `sonador.yaml`, `pacs-secure.yaml`
   - When running Total Segmentator pipelines, at least 6GB of system RAM is required. Under the default configuration, Total Segmentator is configured to use CPU inference.
+  - **IMPORTANT**: SSO for Airflow is provied by Sonador. Refer to `README.md` in `docker/airflow`.
 
 
 ### Quickstart
@@ -124,18 +124,7 @@ docker-compose -f compose/sonador.yaml restart
 
 
 ### GPU 
-The analytics container has GPU support included in the runtime, which can be used through the `compose/analytics-gpu.yaml` manifest. In order for the GPU accelerated to be recognized, the `nvidia-docker2` host must have the `nvidia-docker2` package installed and an `nvidia` runtime must be defined in `/etc/docker/daemon.json` similar to the example shown in the listing below:
-
-```json
-{
-  "runtimes": {
-  "nvidia": {
-      "path": "/usr/bin/nvidia-container-runtime",
-      "runtimeArgs": []
-    }
-  }
-}
-```
+The JupyterLab container has GPU support included in the runtime, which can be used through the `compose/jupyterlab-gpu.yaml` manifest.
 
 
 ### Sonador Web Application or Orthanc Development
@@ -147,33 +136,11 @@ To utilize the development configuration in the manifests:
 3. Restart the container instances
 
 
-### GitLab SSO
-The Sonador platform includes support for Single Sign On via the OpenID Connect protocol, and can be used for authentication for Sonador (and by extension Orthanc) and Airflow.
+### Sonador SSO
+The Sonador platform includes support for Single Sign On via the OpenID Connect protocol, and can be used for authentication for Sonador (and by extension Orthanc) and Airflow. Integrated applications, such as Airflow, are able to use Data Services to handle authentication and authorization.
 
 #### Airflow
-In the `compose` subfolder of the repository, there is an example manifest that shows the configuration required to enable GitLab SSO for Airflow. Before you can use the manifest, however, you first need to setup a file that provides the OpenID connect configuration for your GitLab instance.
-
-An example file called `client_secret.json.sample` showing how this can be done is found in the `config/airflow` subfolder. Create a copy of the file in the same directory, calling it `client_secret.json` and provide the OIDC `client_id`, `client_secret`, GitLab URL, and Airflow URL.
-
-_For additional detail about how the GitLab SSO has been implemented within Airflow, refer to ["Using Gitlab as an Identity Provider for Apache Airflow 2"](https://www.oak-tree.tech/blog/k8s-airflow-oauth2-gitlab)._
-
-##### Assigning an Airflow Role
-Depending on the default role that is specified within the environment, new Airflow users may not be granted any permissions. Before they are able to access the web interface or interface with the system via the API, they need to be granted an expanded role. This can be done using the `users` command of the the `airflow` CLI utility.
-
-You can access the `airflow` via one of the container instances:
-
-```bash
-# docker exec to one of the container instances to access the Airflow CLI tools.
-# The sample command below uses the webserver container instance.
-docker exec -it compose_airflow-webserver_1 bash
-```
-
-From there you can use `airflow users --add-role` to allocate expanded permissions. The example below grants `Admin` permissions to a user called `username`:
-
-```bash
-# Grant Admin permissions to the "username" user.
-airflow add-role -u username -r Admin
-```
+In the `docker/airflow` subfolder of the repository, instructions can be found on how to configure Airflow for SSO with Sonador. The two Airflow configurations in the `compose` subfolder of this repository are configured to use Sonador dataservices for access. Roles are dynamically taken from the Sonador user account.
 
 
 ## Integration Guides
