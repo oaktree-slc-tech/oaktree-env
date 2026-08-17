@@ -1,0 +1,151 @@
+# Single-node RabbitMQ broker for the Celery executor.
+#
+# Adapted from compose/message-broker.yaml, which is a four-line development broker:
+#
+#     message-broker:
+#       image: rabbitmq:management-alpine
+#       ports: [5672:5672, 15672:15672]
+#
+# Changes made for production:
+#
+#   * Pinned image tag. The compose file floats on :management-alpine; an unattended pull of
+#     a new major version against an existing mnesia directory is a bad way to find out.
+#   * Named credentials instead of the built-in guest account. The stock image ships
+#     /etc/rabbitmq/conf.d/10-defaults.conf with `loopback_users.guest = false`, so guest is
+#     reachable from anywhere in the cluster -- fine on a laptop, not here. Setting
+#     RABBITMQ_DEFAULT_USER replaces that account rather than adding to it.
+#   * Persistence. The compose broker keeps its mnesia database in the container's writable
+#     layer, so a restart silently drops queued task messages. Here it is a PVC.
+#   * StatefulSet rather than Deployment, for a stable node name. RabbitMQ writes its node
+#     identity (rabbit@<hostname>) into mnesia; a changing pod name makes the node unable to
+#     recognise its own database on restart.
+#   * A pinned Erlang cookie, health probes, and no NodePort. The management UI is reachable
+#     in-cluster only -- see README.md for the port-forward.
+#
+# Not clustered: one replica, no peer discovery. Airflow's broker traffic is small, and a
+# single node keeps the failure modes obvious. Scaling out means adding the peer-discovery-k8s
+# plugin, an RBAC role for endpoint listing, and a quorum queue policy -- not a replica bump.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-rabbitmq
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/part-of: airflow
+spec:
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: amqp
+  - name: management
+    port: 15672
+    targetPort: management
+---
+# Headless service giving the pod a stable DNS name (airflow-rabbitmq-0.airflow-rabbitmq-headless).
+# Required by the StatefulSet; also what a future second node would use for peer discovery.
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-rabbitmq-headless
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: rabbitmq
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: amqp
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: airflow-rabbitmq
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/part-of: airflow
+spec:
+  serviceName: airflow-rabbitmq-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rabbitmq
+        app.kubernetes.io/part-of: airflow
+    spec:
+      securityContext:
+        # rabbitmq user in the official image
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:4.1-management-alpine
+        ports:
+        - name: amqp
+          containerPort: 5672
+        - name: management
+          containerPort: 15672
+        envFrom:
+        - secretRef:
+            name: airflow-rabbitmq-secrets
+        env:
+        # Without this the node name follows the pod IP, which changes on every restart and
+        # orphans the mnesia directory on the PVC.
+        - name: RABBITMQ_NODENAME
+          value: "rabbit@localhost"
+        - name: RABBITMQ_USE_LONGNAME
+          value: "false"
+        volumeMounts:
+        - name: rabbitmq-data
+          mountPath: /var/lib/rabbitmq
+        # ping only checks the Erlang VM is alive; check_running confirms the broker is
+        # actually accepting work, which is what Celery needs.
+        # rabbitmq-diagnostics is an Erlang CLI that has to attach to the node, so it is not
+        # sub-second. An exec probe defaults to timeoutSeconds: 1, which would leave the
+        # broker stuck at 0/1 Running with an empty log.
+        startupProbe:
+          exec:
+            command: ["rabbitmq-diagnostics", "-q", "check_running"]
+          periodSeconds: 15
+          timeoutSeconds: 15
+          failureThreshold: 30
+        readinessProbe:
+          exec:
+            command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+          periodSeconds: 15
+          timeoutSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["rabbitmq-diagnostics", "-q", "ping"]
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 5
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "512Mi"
+          limits:
+            memory: "1Gi"
+  volumeClaimTemplates:
+  - metadata:
+      name: rabbitmq-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+      # Uses the cluster default StorageClass. Uncomment to pin one:
+      # storageClassName: local-path

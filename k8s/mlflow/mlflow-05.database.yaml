@@ -1,0 +1,51 @@
+# PostgreSQL backend store for MLflow, managed by CloudNativePG (CNPG).
+#
+# SAMPLE / REFERENCE. The superuser password is a placeholder. Copy this file to
+# mlflow-05.database.local.yaml (gitignored), set a real password, and apply that.
+#
+# The Cluster name determines the service endpoints CNPG creates:
+#   mlflow-postgres-rw  (read/write, primary)   <- used by the MLflow deployment
+#   mlflow-postgres-ro  (read-only replicas)
+#   mlflow-postgres-r   (any instance)
+#
+# MLflow connects as the `postgres` superuser (matching the compose environment), so
+# superuser access is enabled and its password pinned via superuserSecret. The database
+# itself is created at bootstrap.
+#
+# Requires the CNPG operator to be installed in the cluster:
+#   https://cloudnative-pg.io/documentation/current/installation_upgrade/
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mlflow-postgres-superuser
+  namespace: sonador-ai
+  labels:
+    app.kubernetes.io/name: mlflow
+type: kubernetes.io/basic-auth
+stringData:
+  username: postgres
+  password: "REPLACE-DB-PASSWORD"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: mlflow-postgres
+  namespace: sonador-ai
+  labels:
+    app.kubernetes.io/name: mlflow
+spec:
+  instances: 2
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: mlflow-postgres-superuser
+
+  bootstrap:
+    initdb:
+      database: mlflow
+      owner: postgres
+
+  storage:
+    size: 10Gi
+    # storageClass: standard-rwo   # uncomment to pin; omitted -> cluster default

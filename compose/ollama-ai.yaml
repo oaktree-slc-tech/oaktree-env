@@ -4,7 +4,7 @@ services:
 
   ollama-api:
     image: ollama/ollama:latest
-    container_name: ollama
+    container_name: ollama-api
     restart: unless-stopped
     ports:
     - 11434:11434

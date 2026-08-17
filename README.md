@@ -64,6 +64,9 @@ Data infrastructure (ETL):
   - Requires: `core.yaml`, `message-broker.yaml`, `sonador.yaml`, `pacs-secure.yaml`
   - When running Total Segmentator pipelines, at least 6GB of system RAM is required. Under the default configuration, Total Segmentator is configured to use CPU inference.
   - **IMPORTANT**: SSO for Airflow is provied by Sonador. Refer to `README.md` in `docker/airflow`.
+* `mlflow-tracking.yaml`. MLflow experiment tracking server backed by PostgreSQL and MinIO object storage.
+  - Requires: `core.yaml`, `sonador.yaml`
+  - **IMPORTANT**: SSO and API token validation for MLflow are provided by Sonador and require additional configuration. Refer to `README.md` in `docker/mlflow` for additional information.
 
 
 ### Quickstart
@@ -141,6 +144,9 @@ The Sonador platform includes support for Single Sign On via the OpenID Connect 
 
 #### Airflow
 In the `docker/airflow` subfolder of the repository, instructions can be found on how to configure Airflow for SSO with Sonador. The two Airflow configurations in the `compose` subfolder of this repository are configured to use Sonador dataservices for access. Roles are dynamically taken from the Sonador user account.
+
+#### MLflow
+In the `docker/mlflow` subfolder of the repository, instructions can be found on how to configure MLflow for SSO with Sonador. The MLflow configuration in the `compose` subfolder is configured to use a Sonador data service (`mlflow`) for browser SSO and for validation of Sonador API tokens on the MLflow REST API.
 
 
 ## Integration Guides

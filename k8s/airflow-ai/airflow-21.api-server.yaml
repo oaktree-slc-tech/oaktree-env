@@ -1,0 +1,131 @@
+# Airflow 3 API server -- the web UI, the REST API, the FAB auth views that carry Sonador
+# SSO, and the execution API that workers and the scheduler call back into.
+#
+# This is the component the PoC proved out; the configuration is unchanged apart from moving
+# to CeleryExecutor and shared ConfigMaps.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-webserver
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: airflow
+    app.kubernetes.io/component: webserver
+spec:
+  selector:
+    app.kubernetes.io/name: airflow
+    app.kubernetes.io/component: webserver
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: airflow
+    app.kubernetes.io/component: webserver
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: airflow
+      app.kubernetes.io/component: webserver
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: airflow
+        app.kubernetes.io/component: webserver
+    spec:
+      securityContext:
+        runAsUser: 50000
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: webserver
+        image: oaktreetech/sonador-airflow.ai
+        # --proxy-headers lets uvicorn populate scheme and remote address from the
+        # X-Forwarded-* headers Traefik sets. Pairs with AIRFLOW__FAB__ENABLE_PROXY_FIX,
+        # which does the same for the FAB (Flask) sub-app that handles the OIDC callback.
+        args: ["api-server", "--proxy-headers"]
+        ports:
+        - name: http
+          containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: airflow-config
+        - secretRef:
+            name: airflow-secrets
+        volumeMounts:
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/sonador_sso.py
+          subPath: sonador_sso.py
+          readOnly: true
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py
+          subPath: sonador_auth.py
+          readOnly: true
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py
+          subPath: sonador_hook.py
+          readOnly: true
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py
+          subPath: object_storage_hook.py
+          readOnly: true
+        - name: dags-io
+          mountPath: /opt/airflow/dags/sonador
+          readOnly: true
+        - name: dags-ai
+          mountPath: /opt/airflow/dags/ai
+          readOnly: true
+        - name: logs
+          mountPath: /opt/airflow/logs
+        # sonador_auth.py contacts Sonador at import time, so first start is slower than a
+        # stock Airflow image. This endpoint needs no authentication and stays 200 even when
+        # other components are down, so it reports this pod's health rather than the cluster's.
+        startupProbe:
+          httpGet:
+            path: /api/v2/monitor/health
+            port: http
+          periodSeconds: 10
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /api/v2/monitor/health
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/v2/monitor/health
+            port: http
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 5
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            memory: "3Gi"
+      volumes:
+      - name: modules
+        configMap:
+          name: airflow-modules
+          defaultMode: 0444
+      - name: dags-io
+        configMap:
+          name: airflow-dags-io
+          defaultMode: 0444
+      - name: dags-ai
+        configMap:
+          name: airflow-dags-ai
+          defaultMode: 0444
+      - name: logs
+        emptyDir: {}

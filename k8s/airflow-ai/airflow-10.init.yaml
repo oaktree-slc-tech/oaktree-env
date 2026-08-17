@@ -1,0 +1,68 @@
+# One-shot initialisation: schema migrations and pool creation. Replaces the airflow-init
+# service (_AIRFLOW_DB_MIGRATE) from compose/visionaire.airflow-ai.yaml.
+#
+# Run this to completion before applying the component manifests, and again after any image
+# upgrade that bumps the Airflow version:
+#
+#   kubectl -n airflow-ai delete job airflow-init --ignore-not-found
+#   kubectl -n airflow-ai apply -f k8s/airflow-ai/airflow-10.init.yaml
+#   kubectl -n airflow-ai wait --for=condition=complete job/airflow-init --timeout=10m
+#
+# Three steps:
+#   1. airflow db migrate      -- core schema (63 tables)
+#   2. airflow fab-db migrate  -- Flask-AppBuilder user/role/permission tables, which is
+#                                 where Sonador SSO writes an account on first login
+#   3. airflow pools set       -- ai_inference_pool, required by the TotalSegmentator DAG
+#                                 (pool='ai_inference_pool'). Without it those tasks queue
+#                                 forever with no obvious error.
+#
+# AIRFLOW__CORE__AUTH_MANAGER is overridden to the stock FAB manager: initialisation has no
+# reason to depend on Sonador being reachable, and the schema produced is identical.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: airflow
+    app.kubernetes.io/component: init
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: airflow
+        app.kubernetes.io/component: init
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 50000
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: init
+        image: oaktreetech/sonador-airflow.ai
+        args:
+        - bash
+        - -c
+        - |
+          set -e
+          until airflow db migrate; do echo 'waiting for database...'; sleep 5; done
+          airflow fab-db migrate
+          airflow pools set ai_inference_pool 2 'TotalSegmentator inference concurrency'
+          echo 'airflow-init complete'
+        envFrom:
+        - configMapRef:
+            name: airflow-config
+        - secretRef:
+            name: airflow-secrets
+        env:
+        - name: AIRFLOW__CORE__AUTH_MANAGER
+          value: "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "1Gi"
+          limits:
+            memory: "2Gi"

@@ -1,0 +1,109 @@
+# Airflow scheduler. Decides what runs and when, and hands tasks to Celery.
+#
+# Single replica. Airflow 3 supports active-active schedulers via row-level locking, but a
+# second replica buys availability rather than throughput and doubles the database load;
+# raise it only if scheduler downtime during a rolling update is unacceptable.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: airflow
+    app.kubernetes.io/component: scheduler
+spec:
+  replicas: 1
+  strategy:
+    # Avoid two schedulers briefly overlapping on a rollout.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: airflow
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: airflow
+        app.kubernetes.io/component: scheduler
+    spec:
+      securityContext:
+        runAsUser: 50000
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: scheduler
+        image: oaktreetech/sonador-airflow.ai
+        args: ["scheduler"]
+        envFrom:
+        - configMapRef:
+            name: airflow-config
+        - secretRef:
+            name: airflow-secrets
+        volumeMounts:
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/sonador_sso.py
+          subPath: sonador_sso.py
+          readOnly: true
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/sonador_auth.py
+          subPath: sonador_auth.py
+          readOnly: true
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/sonador_hook.py
+          subPath: sonador_hook.py
+          readOnly: true
+        - name: modules
+          mountPath: /home/airflow/.local/lib/python3.10/site-packages/object_storage_hook.py
+          subPath: object_storage_hook.py
+          readOnly: true
+        - name: dags-io
+          mountPath: /opt/airflow/dags/sonador
+          readOnly: true
+        - name: dags-ai
+          mountPath: /opt/airflow/dags/ai
+          readOnly: true
+        - name: logs
+          mountPath: /opt/airflow/logs
+        # `airflow jobs check` takes 5-8s here: every Airflow CLI call imports sonador_auth,
+        # which makes an HTTPS round trip to Sonador before doing anything. An exec probe
+        # defaults to timeoutSeconds: 1, which this can never satisfy -- the container would
+        # sit at 0/1 Running with nothing in its log.
+        #
+        # --local matches jobs whose hostname equals hostname_callable, which is pinned to
+        # socket.gethostname in airflow-config. Passing --hostname "$(hostname)" instead is
+        # fragile: Airflow defaults hostname_callable to getfqdn, and for pods governed by a
+        # headless service getfqdn returns the full <pod>.<svc>.<ns>.svc.cluster.local name.
+        startupProbe:
+          exec:
+            command: ["bash", "-c", "airflow jobs check --job-type SchedulerJob --local"]
+          periodSeconds: 20
+          timeoutSeconds: 20
+          failureThreshold: 30
+        livenessProbe:
+          exec:
+            command: ["bash", "-c", "airflow jobs check --job-type SchedulerJob --local"]
+          periodSeconds: 120
+          timeoutSeconds: 30
+          failureThreshold: 5
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            memory: "3Gi"
+      volumes:
+      - name: modules
+        configMap:
+          name: airflow-modules
+          defaultMode: 0444
+      - name: dags-io
+        configMap:
+          name: airflow-dags-io
+          defaultMode: 0444
+      - name: dags-ai
+        configMap:
+          name: airflow-dags-ai
+          defaultMode: 0444
+      - name: logs
+        emptyDir: {}

@@ -165,7 +165,7 @@ def segmentation_similarity_search(DatabaseSession, EmbeddingModel, group, model
 			
 			logger.error('Unable to create similarity op due. Error: "%s"\n%s' % (err, traceback.format_exc()))
 			raise HTTPException(status_code=client_api.STATUS_400,
-				detail='Unable to create similarity operation due to an error', error='%s' % err)
+				detail='Unable to create similarity operation due to an error: %s' % err)
 		
 		# Execute similarity search
 		try:
@@ -187,8 +187,8 @@ def segmentation_similarity_search(DatabaseSession, EmbeddingModel, group, model
 			
 			logger.error('Unable to execute similarity search for image segmentation embedding. Error: "%s"\n%s'
 				% (err, traceback.format_exc()))
-			raise HTTPException(status_code=client_api.STATUS_400, 
-				detail='Unable to execute similarity search due to an error', error='%s' % err)
+			raise HTTPException(status_code=client_api.STATUS_400,
+				detail='Unable to execute similarity search due to an error: %s' % err)
 
 		# Unpack results for serialization
 		return [SimilarityResponseClass(distance=_r[1], **pick(_r[0], 
@@ -265,9 +265,13 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 				raise HTTPException(status_code=client_api.STATUS_404,
 					detail='Segmentation series="%s" does not exist' % embedding.resource)
 
-		# Ensure that the segmentation resource is M3D or SEg
+			# Propagate any other client error. Without this, _sx_seg is never bound and
+			# the modality check below fails with UnboundLocalError (HTTP 500).
+			raise err
+
+		# Ensure that the segmentation resource is M3D or SEG
 		if not _sx_seg.modality in (DCM_MODALITY_SEG, DCM_MODALITY_M3D):
-			raise HTTPException(status_code=client_api.STATUS_400, 
+			raise HTTPException(status_code=client_api.STATUS_400,
 				detail='Invalid segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
 
 		try: _sx_gold = iserver.get_series(embedding.ground_truth)
@@ -276,12 +280,15 @@ def init_instance_segmentation_embedding_endpoints(app, sonador_dataservice_oidc
 			# Raise 404 error and notify user that ground truth resource does not exist
 			if getattr(err, 'http_code', None) and err.http_code == client_api.STATUS_404:
 				raise HTTPException(status_code=client_api.STATUS_404,
-					detail='Ground truth segmentation series series="%s" does not exist' % embedding.ground_truth)
+					detail='Ground truth segmentation series="%s" does not exist' % embedding.ground_truth)
+
+			# Propagate any other client error (see note above).
+			raise err
 
 		# Ensure that the segmentation ground truth is M3D or SEG
 		if not _sx_gold.modality in (DCM_MODALITY_SEG, DCM_MODALITY_M3D):
-			raise HTTPException(status_code=client_api.STATUS_400, 
-				detail='Invalid ground-truth segmentation series=%s modality=%s' % (_sx_seg.pk, _sx_seg.modality))
+			raise HTTPException(status_code=client_api.STATUS_400,
+				detail='Invalid ground-truth segmentation series=%s modality=%s' % (_sx_gold.pk, _sx_gold.modality))
 
 		# Create new instance embedding
 		return create_segmentation_embedding(app, DatabaseSession, InstanceSegmentationEmbedding, group, embedding)

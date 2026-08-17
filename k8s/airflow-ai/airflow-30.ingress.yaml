@@ -1,0 +1,46 @@
+# Public ingress for the Airflow web application.
+#
+# Traefik: ingress class "traefik", a cert-manager ClusterIssuer, a <host-with-dashes>-tls
+# secret, and no router annotations. Clusters using the nginx controller instead should set
+# ingressClassName: nginx -- see k8s/sonador.ingress.yaml for that variant.
+#
+# Give each hostname its own tls entry and secret. Listing several hosts under one secretName
+# produces a single certificate with several SANs, and ACME fails the whole order if any one
+# of them cannot be validated -- taking down the certificate for hosts that were working.
+#
+# One "/" Prefix rule covers everything -- Airflow serves the UI, /api/v2, and the FAB auth
+# views from the same backend. Do NOT add a path-rewriting middleware: the OpenID Connect
+# callback depends on the /auth prefix surviving intact.
+#
+# Traefik sets X-Forwarded-Proto/Host by default, which is what lets
+# AIRFLOW__FAB__ENABLE_PROXY_FIX and `api-server --proxy-headers` build an https redirect_uri.
+#
+# Only the webserver is exposed. Flower and the RabbitMQ management UI are reachable by
+# port-forward only, on purpose -- neither authenticates in this configuration.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: airflow
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: airflow
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - airflow.example.com
+    secretName: airflow-example-com-tls
+  rules:
+  - host: airflow.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: airflow-webserver
+            port:
+              number: 8080
