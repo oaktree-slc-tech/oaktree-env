@@ -6,6 +6,14 @@ data/minio/playground
 config/sonador/dbmigrations/*
 config/sonador/sonador.db
 compose/visionaire.*.yaml
+k8s/**/*.local.yaml
+
+# Local scratch, credentials, and working data. The handful of notebooks already tracked
+# under local/ stay tracked; this stops anything new -- including local/env and local/keys,
+# which hold cloud service-account credentials and SSH keys -- from being staged.
+local/
+config/airflow/client_secret.*.yaml
+config/airflow/client_secret.*.json
 __pycache__
 data/airflow/logs/*
 data/totalsegmentator/*

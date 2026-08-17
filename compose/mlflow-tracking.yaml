@@ -1,24 +1,53 @@
 version: "2.1"
 services:
 
+  # MLflow PostgreSQL 
   mlflow-db:
-    image: postgres:11
+    image: postgres:16
+    volumes:
+    - mlflow-postgres:/var/lib/postgresql/data/pgdata
     environment:
       POSTGRES_PASSWORD: machine-learning-experiment-tracking
       POSTGRES_USER: postgres
       POSTGRES_DB: mlflow
       PGDATA: /var/lib/postgresql/data/pgdata
 
+  # MLflow Application
   mlflow:
-    image: oaktreetech/mlflow 
+    image: oaktreetech/mlflow
+    container_name: mlflow
     volumes:
     - ../data/mlflow:/home/mlflow
+
+    # Sonador auth app source: mounted over the installed package so changes in
+    # the repository take effect on container restart without an image rebuild.
+    # Entry point registration (mlflow.app/sonador-auth) is baked at image build.
+    - ../docker/mlflow/src/sonador-mlflow-auth/sonador_mlflow_auth:/usr/local/lib/python3.12/dist-packages/sonador_mlflow_auth:ro
     environment:
+
+      # S3 Settings
       MLFLOW_S3_ENDPOINT_URL: "http://object-storage:9000"
       AWS_SECRET_ACCESS_KEY: "jupyter@analytics"
       AWS_ACCESS_KEY_ID: "jupyter"
-    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", 
+
+      # MLflow Gateway Settings
+      MLFLOW_SERVER_ALLOWED_HOSTS: '*'
+      MLFLOW_CRYPTO_KEK_PASSPHRASE: "super-secret-medical-research"
+
+      # Sonador Connection / SSO. Refer to README.md in docker/mlflow for
+      # details on creating and configuring the data service.
+      SONADOR_URL: "http://imaging:8070"
+      SONADOR_APITOKEN: "secure-api@sonador-dev"
+      SONADOR_SERVICE_CLIENT_ID: 'mlflow'
+      MLFLOW_FLASK_SERVER_SECRET_KEY: 'sonador.mlflow-session-secret'
+
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000",
+              "--app-name", "sonador-auth",
               "--backend-store-uri", "postgresql://postgres:machine-learning-experiment-tracking@mlflow-db:5432/mlflow",
               "--default-artifact-root", "s3://mlflow-experiments"]
     ports:
     - 5000:5000
+
+
+volumes:
+  mlflow-postgres:

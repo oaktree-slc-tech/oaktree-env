@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sonador-mlflow-auth"
+version = "0.4.1"
+description = "Sonador Data Service mediated Single Sign On and API token authentication for MLflow"
+requires-python = ">=3.10"
+dependencies = [
+    "mlflow>=3.0",
+    "sonador>=0.4.1",
+    "Flask",
+]
+
+[project.entry-points."mlflow.app"]
+sonador-auth = "sonador_mlflow_auth.app:create_app"
+
+[tool.setuptools.packages.find]
+include = ["sonador_mlflow_auth*"]

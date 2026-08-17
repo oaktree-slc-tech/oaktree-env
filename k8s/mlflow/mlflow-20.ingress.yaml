@@ -1,0 +1,64 @@
+# Public ingress for the MLflow tracking server (nginx ingress controller).
+#
+# SAMPLE / REFERENCE. Copy to mlflow-20.ingress.local.yaml (gitignored) and set the real
+# hostname before applying. The hostname must also appear in MLFLOW_SERVER_ALLOWED_HOSTS
+# and SONADOR_SERVICE_REDIRECT_URL (mlflow-secrets), and the redirect URL must be
+# registered in the Sonador data service "Callback URL" list.
+#
+# Annotation notes:
+# * Both the legacy `ingress.kubernetes.io/*` and `nginx.ingress.kubernetes.io/*` keys are
+#   set for force-ssl-redirect and proxy-body-size -- older deployed controllers read the
+#   former, current nginx controllers only honor the latter. proxy-body-size must be
+#   raised or large artifact uploads fail with 413.
+# * No rewrite-target annotation: MLflow is served at the root and the OpenID Connect
+#   callback (/oauth-authorized/sonador) depends on paths surviving intact.
+# * cert-manager.io/issuer expects a NAMESPACE-SCOPED Issuer named letsencrypt-prod in
+#   sonador-ai -- a fresh namespace will not have one and the Certificate sits in "issuer
+#   not found" until it does. Either replicate an existing Issuer into the namespace or
+#   switch the annotation to cert-manager.io/cluster-issuer if the cluster provides a
+#   ClusterIssuer. See "Certificate never issues" in README.md.
+#
+# Give each hostname its own tls entry and secret. Listing several hosts under one
+# secretName produces a single certificate with several SANs, and ACME fails the whole
+# order if any one of them cannot be validated.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mlflow
+  namespace: sonador-ai
+  labels:
+    app.kubernetes.io/name: mlflow
+  annotations:
+    # Legacy class annotation alongside spec.ingressClassName: older deployed nginx
+    # controllers only watch the annotation (see k8s/sonador.ingress.yaml). Without a
+    # matching class the controller ignores the Ingress entirely -- no vhost (503/404)
+    # and no served ACME challenge, so the certificate never issues either.
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/issuer: letsencrypt-prod
+    ingress.kubernetes.io/force-ssl-redirect: "true"
+    ingress.kubernetes.io/proxy-body-size: "1024m"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1024m"
+    kubernetes.io/cors-max-age: "1728000"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-headers: Authorization,Accept,Origin,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range
+    nginx.ingress.kubernetes.io/cors-allow-methods: GET,POST,OPTIONS,PUT,DELETE,PATCH
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - mlflow.example.com
+    secretName: mlflow-tls
+  rules:
+  - host: mlflow.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mlflow
+            port:
+              number: 5000

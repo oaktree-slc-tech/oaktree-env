@@ -20,7 +20,7 @@ services:
   context-db:
     
     image: oaktreetech/agentic-ai.contextdb
-    container_image: sonador-contextdb
+    container_name: sonador-contextdb
     build:
       context: ../docker/context-db/
       dockerfile: ../docker/context-db/Dockerfile

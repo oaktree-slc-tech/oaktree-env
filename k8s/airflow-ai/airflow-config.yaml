@@ -1,0 +1,103 @@
+# Non-sensitive environment shared by every Airflow component. Each Deployment pulls this
+# with `envFrom: configMapRef` alongside `envFrom: secretRef` for airflow-secrets, so all
+# components see an identical configuration. Component-specific values (queues, concurrency)
+# are set with an explicit `env:` entry, which takes precedence over envFrom.
+#
+# Adapted from compose/visionaire.airflow-ai.yaml.
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: airflow-config
+  namespace: airflow-ai
+  labels:
+    app.kubernetes.io/name: airflow
+data:
+
+  # --- Core --------------------------------------------------------------------------------
+  AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+
+  # Workers and the scheduler reach the execution API through the webserver Service. The
+  # trailing /execution/ is required.
+  AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-webserver.airflow-ai.svc.cluster.local:8080/execution/"
+
+  # --- Sonador single sign-on --------------------------------------------------------------
+  #
+  # Set on every component, not just the webserver: the auth manager is imported during CLI
+  # startup, so scheduler/worker/triggerer all load sonador_auth too.
+  AIRFLOW__CORE__AUTH_MANAGER: "sonador_auth.SonadorFabAuthManager"
+  AIRFLOW__FAB__CONFIG_FILE: "/home/airflow/.local/lib/python3.10/site-packages/sonador_sso.py"
+
+  # --- API server / reverse proxy ----------------------------------------------------------
+  #
+  # ENABLE_PROXY_FIX is what makes FAB derive the OpenID Connect redirect_uri from the
+  # X-Forwarded-* headers Traefik sets. Measured against this image:
+  #   false -> redirect_uri=http://localhost:8080/auth/oauth-authorized/sonador   (rejected)
+  #   true  -> redirect_uri=https://airflow.example.com/auth/oauth-authorized/sonador
+  # BASE_URL does not drive redirect_uri; it covers other absolute URLs Airflow emits.
+  AIRFLOW__API__BASE_URL: "https://airflow.example.com"
+  AIRFLOW__API__EXPOSE_CONFIG: "false"
+  AIRFLOW__FAB__ENABLE_PROXY_FIX: "true"
+  AIRFLOW__FAB__COOKIE_SECURE: "true"
+
+  # --- Remote task logging (S3 / MinIO) ----------------------------------------------------
+  #
+  # Required for CeleryExecutor on Kubernetes: worker pods are ephemeral, so the API server
+  # cannot read task logs off a worker's local disk after it is rescheduled. Credentials come
+  # from AIRFLOW_CONN_S3_DEFAULT in airflow-secrets. The bucket must already exist.
+  AIRFLOW__LOGGING__REMOTE_LOGGING: "true"
+  AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: "s3://airflow-logs"
+  AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: "s3_default"
+  AIRFLOW__LOGGING__ENCRYPT_S3_LOGS: "false"
+
+  # --- Celery ------------------------------------------------------------------------------
+  #
+  # Broker URL and result backend carry credentials and live in airflow-secrets.
+  AIRFLOW__CELERY__WORKER_CONCURRENCY: "4"
+
+  # --- Scheduler / DAG processing ----------------------------------------------------------
+  # Airflow defaults hostname_callable to getfqdn. For StatefulSet pods governed by a
+  # headless service that returns <pod>.<svc>.<ns>.svc.cluster.local, which then does not
+  # match `hostname` in an exec probe, and makes Celery register as
+  # celery@<long.name> so `inspect ping -d celery@$(hostname)` never matches. Pinning it to
+  # the plain pod name keeps the probes, the UI, and the log filenames consistent.
+  AIRFLOW__CORE__HOSTNAME_CALLABLE: "socket.gethostname"
+
+  AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "60"
+  AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "30"
+
+  # --- Image workaround --------------------------------------------------------------------
+  #
+  # In oaktreetech/sonador-airflow.ai:latest the sonador, sonadoretl, sonador3d, and client
+  # packages are installed into /usr/python/lib/python3.10/site-packages, but Airflow runs
+  # from a venv at /home/airflow/.local whose sys.path does not include it. Without this,
+  # every component dies with "ModuleNotFoundError: No module named 'client'" -- including
+  # the dag-processor, since both DAGs import client.* and sonador.* at parse time.
+  # Remove once docker/airflow/Dockerfile installs those packages into the airflow venv.
+  PYTHONPATH: "/usr/python/lib/python3.10/site-packages"
+
+  # --- Sonador API / data service ----------------------------------------------------------
+  #
+  # SONADOR_SERVICE_CLIENT_ID is the id of the Sonador data service this deployment
+  # authenticates against. `manage.py data-service create --service airflow` produces the
+  # readable id used here and in compose; services created from the Sonador admin panel get
+  # a random string instead, in which case put that value here.
+  #
+  #   compose:  SONADOR_URL "http://imaging:8070", SONADOR_SERVICE_CLIENT_ID "airflow"
+  SONADOR_URL: "https://imaging.example.com"
+  SONADOR_SERVICE_CLIENT_ID: "airflow"
+  SONADOR_SERVICE_OPENID_SCOPE: "openid email profile"
+
+  # --- Connection discovery for the AI DAG -------------------------------------------------
+  #
+  # Airflow 3 forbids database access while DAGs are being parsed, so the hooks fall back to
+  # these instead of querying the connection table. Note the asymmetry, which is in the hook
+  # source, not a mistake here: object_storage_hook reads an environment variable, while
+  # sonador_hook reads an Airflow Variable (AIRFLOW_VAR_* is how you set one from the env).
+  # These populate the connection dropdowns on the TotalSegmentator DAG's trigger form.
+  S3_CONNECTIONS: "s3_default"
+  S3_DEFAULT_CONN: "s3_default"
+  AIRFLOW_VAR_SONADOR_CONNECTIONS: "sonador"
+  AIRFLOW_VAR_SONADOR_DEFAULT_CONN: "sonador"
